@@ -132,6 +132,21 @@ public class Images {
         store.jdbc().update("UPDATE asset SET roi_json=? WHERE id=?",store.json().write(roi),id); return store.asset(id);
     }
     /** Passing review confirms the requested sample, while OK/NG is a separate quality judgment. */
+    @Transactional
+    public void reviewBatch(String batchId, BatchReview request) {
+        require(request!=null && request.ids()!=null && !request.ids().isEmpty() && request.ids().size()<=5000,"请选择1至5000张图片");
+        require(new java.util.HashSet<>(request.ids()).size()==request.ids().size(),"审核图片重复");
+        require(request.status()!=null && java.util.Set.of("APPROVED","REJECTED").contains(request.status()),"批量审核状态无效");
+        require(!store.jdbc().queryForList("SELECT id FROM batch WHERE id=? FOR UPDATE",batchId).isEmpty(),"批次不存在");
+        var outputs=new java.util.HashMap<String,Task>();
+        for(Task task:store.tasks(batchId)) if(task.outputId()!=null) outputs.put(task.outputId(),task);
+        require(outputs.keySet().containsAll(request.ids()),"所选图片不属于该批次的生成结果");
+        for(String id:request.ids()) {
+            var defect=outputs.get(id).params().defect();
+            String label=defect==null ? "normal" : defect.type();
+            review(id,new Review(request.status(),label,label.equals("normal") ? "OK" : "NG",request.reason()));
+        }
+    }
     public Asset review(String id, Review review) {
         Asset asset = store.asset(id);
         require(!asset.role().equals("SOURCE"), "原始参考图无需审核");

@@ -36,4 +36,5 @@ public final class Models {
     public record PromptEdit(String id, String prompt) {}
     public record Confirm(boolean confirmed, List<PromptEdit> prompts) {}
     public record Review(String status, String label, String quality, String reason) {}
+    public record BatchReview(List<String> ids, String status, String reason) {}
 }

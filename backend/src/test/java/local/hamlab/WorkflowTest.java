@@ -149,6 +149,33 @@ class WorkflowTest {
         assertThat(store.task(unknown.id()).status()).isEqualTo("CANCELLED");
         assertThat(store.task(success.id()).status()).isEqualTo("SUCCEEDED");
     }
+    @Test void batchReviewApprovesOutputsAndRejectsOnlySelectedImages() throws Exception {
+        Asset input=base();
+        String id=draft(List.of(input.id()),List.of(missing(1)),2);
+        confirm(id); worker.tick(); worker.tick();
+        var ids=store.tasks(id).stream().map(Task::outputId).toList();
+        assertThat(ids).doesNotContainNull();
+        images.reviewBatch(id,new BatchReview(ids,"APPROVED",""));
+        for(String output:ids) {
+            assertThat(store.asset(output).review()).isEqualTo("APPROVED");
+            assertThat(store.asset(output).label()).isEqualTo("missing_chars");
+            assertThat(store.asset(output).quality()).isEqualTo("NG");
+        }
+        assertThatThrownBy(()->images.reviewBatch(id,new BatchReview(List.of(ids.getFirst(),input.id()),"REJECTED","bad"))).hasMessageContaining("不属于");
+        assertThat(store.asset(ids.getFirst()).review()).isEqualTo("APPROVED");
+        assertThatThrownBy(()->images.reviewBatch(id,new BatchReview(ids,"REJECTED",""))).hasMessageContaining("原因");
+        images.reviewBatch(id,new BatchReview(List.of(ids.getFirst()),"REJECTED","日期乱码"));
+        assertThat(store.asset(ids.getFirst()).review()).isEqualTo("REJECTED");
+        assertThat(store.asset(ids.getFirst()).rejectionReason()).isEqualTo("日期乱码");
+        assertThat(store.asset(ids.getLast()).review()).isEqualTo("APPROVED");
+        Asset source=images.upload(png(),"SOURCE",DATE);
+        String poses=((Map<?,?>)batches.draft(new Draft("POSE","TEST",List.of(source.id()),DATE,List.of(pose),List.of(),1)).get("batch")).get("id").toString();
+        confirm(poses); worker.tick();
+        String output=store.tasks(poses).getFirst().outputId();
+        images.reviewBatch(poses,new BatchReview(List.of(output),"APPROVED",""));
+        assertThat(store.asset(output).label()).isEqualTo("normal");
+        assertThat(store.asset(output).quality()).isEqualTo("OK");
+    }
     @Test void deleteBatchPreservesInputsAndProtectsLiveOrGeneratedTasks() throws Exception {
         Asset input=base();
         String draftId=draft(List.of(input.id()),List.of(missing(1)),1);

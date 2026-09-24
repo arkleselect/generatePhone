@@ -54,6 +54,7 @@ public class Api {
     @PostMapping("/assets/delete") public void deleteAssets(@RequestBody List<String> ids) { images.deleteAssets(ids); }
     @PostMapping("/batches") public Map<String,Object> draft(@RequestBody Draft draft) { return batches.draft(draft); }
     @DeleteMapping("/batches/{id}") public void deleteBatch(@PathVariable String id) { batches.delete(id); }
+    @PutMapping("/batches/{id}/review") public void reviewBatch(@PathVariable String id,@RequestBody BatchReview body) { images.reviewBatch(id,body); }
     @PostMapping("/batches/{id}/confirm") public void confirm(@PathVariable String id,@RequestBody Confirm confirm) { batches.confirm(id,confirm); }
     @PostMapping("/batches/{id}/{action}") public void action(@PathVariable String id,@PathVariable String action) { batches.action(id,action); }
     @PostMapping("/tasks/{id}/resolve") public void resolve(@PathVariable String id,@RequestBody Map<String,Boolean> body) { batches.resolveUnknown(id,Boolean.TRUE.equals(body.get("verifiedNotAccepted"))); }
@@ -72,8 +73,9 @@ public class Api {
         account.bundle(id,response.getOutputStream());
     }
     @GetMapping("/export") public void export(@RequestParam(defaultValue="") String pose,@RequestParam(defaultValue="") String defect,
-        @RequestParam(defaultValue="APPROVED") String review,HttpServletResponse response) throws IOException {
+        @RequestParam(defaultValue="APPROVED") String review,@RequestParam(defaultValue="") String batch,HttpServletResponse response) throws IOException {
         var selected=exports.select(pose,defect,review);
+        if(!batch.isBlank()) selected=selected.stream().filter(a->store.task(a.taskId()).batchId().equals(batch)).toList();
         Prompts.require(!selected.isEmpty(),"没有符合筛选条件的真实生成结果；测试图片不导出");
         response.setContentType("application/zip");response.setHeader("Content-Disposition","attachment; filename=hamlab-dataset.zip");
         exports.zip(response.getOutputStream(),selected);
