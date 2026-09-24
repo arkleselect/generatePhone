@@ -1,0 +1,23 @@
+server:
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  port: 8080
+  error:
+    include-message: never
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/hamlab?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC}
+    username: ${DB_USER:hamlab}
+    password: ${DB_PASSWORD}
+    hikari:
+      connection-init-sql: "SET time_zone = '+00:00'"
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 100MB
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+app:
+  browser-directory: ${BROWSER_DIRECTORY:./automation}
+  browser-python: ${BROWSER_PYTHON:./automation/.venv/bin/python}
+  storage: ${STORAGE_DIR:./data}

@@ -1,0 +1,11 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:hamlab;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password: ''
+    hikari:
+      connection-init-sql: SELECT 1
+app:
+  storage: ${java.io.tmpdir}/hamlab-tests-${random.uuid}
+  queue-delay: 3600000
+  queue-initial-delay: 3600000

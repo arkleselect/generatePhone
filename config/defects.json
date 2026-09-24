@@ -1,0 +1,107 @@
+{
+  "missing_chars": {
+    "label": "日期不全",
+    "datasetType": "date_incomplete",
+    "positions": true,
+    "severity": false,
+    "effect": "{positions}完全缺失，其他字符保持原位"
+  },
+  "partial_break": {
+    "label": "断码",
+    "datasetType": "broken_print",
+    "positions": true,
+    "severity": true,
+    "effect": "{positions}的{part}部分喷墨点或笔画缺失，不是整字删除"
+  },
+  "multi_break": {
+    "label": "掉码",
+    "datasetType": "code_dropout",
+    "positions": true,
+    "severity": true,
+    "effect": "{positions}局部点阵掉点，每个字符仍有部分笔画"
+  },
+  "blur": {
+    "label": "模糊",
+    "datasetType": "blur",
+    "positions": false,
+    "severity": true,
+    "effect": "仅生产日期喷码局部边缘模糊，保持字符存在，其余画面清晰，不是整图失焦"
+  },
+  "faint_print": {
+    "label": "浅淡",
+    "datasetType": "faint",
+    "positions": false,
+    "severity": true,
+    "effect": "所有日期字符仍存在，仅降低日期墨迹浓度，不改变整图亮度或清晰度"
+  },
+  "stain": {
+    "label": "污染 / 脏污",
+    "datasetType": "stain",
+    "positions": false,
+    "severity": true,
+    "effect": "日期喷码区域出现少量自然深灰色脏污，局部遮盖字符，其他区域保持干净，不添加大型异物"
+  },
+  "misalignment": {
+    "label": "错位",
+    "datasetType": "misalignment",
+    "positions": false,
+    "severity": true,
+    "effect": "日期中部分字符发生轻微纵向错位或基线偏移，日期仍在原喷码区域内，不移动产品或整体构图"
+  },
+  "double_print": {
+    "label": "重影",
+    "datasetType": "ghosting",
+    "positions": false,
+    "severity": true,
+    "effect": "同一完整日期出现向{direction}轻微错位的重复喷印"
+  },
+  "no_print": {
+    "label": "日期缺失",
+    "datasetType": "date_missing",
+    "positions": false,
+    "severity": false,
+    "effect": "日期区域完全无喷码，保留自然肠衣纹理"
+  },
+  "normal": {
+    "label": "正常样本",
+    "datasetType": "normal",
+    "positions": false,
+    "severity": false,
+    "effect": "完整正常日期，无缺陷"
+  },
+  "local_faint": {
+    "label": "局部浅码",
+    "datasetType": "local_faint",
+    "positions": true,
+    "severity": true,
+    "effect": "{positions}墨迹变浅，其余字符正常"
+  },
+  "smear": {
+    "label": "拖墨 / 糊码",
+    "datasetType": "smear",
+    "positions": false,
+    "severity": true,
+    "effect": "日期向{direction}局部拖尾、扩散或粘连，不是整图失焦"
+  },
+  "occlusion": {
+    "label": "异物遮挡",
+    "datasetType": "occlusion",
+    "positions": true,
+    "severity": true,
+    "effect": "{object}遮住{positions}，贴合表面，有自然边缘和接触阴影；完整日期被挡住，不是直接删除"
+  },
+  "wrinkle_occlusion": {
+    "label": "褶皱干扰",
+    "datasetType": "wrinkle_occlusion",
+    "positions": true,
+    "severity": true,
+    "effect": "{positions}处自然肠衣褶皱干扰，表面光影与字符形变一致，不是白线"
+  },
+  "custom": {
+    "label": "自定义缺陷",
+    "datasetType": "custom",
+    "positions": false,
+    "severity": false,
+    "effect": "{description}"
+  }
+}
