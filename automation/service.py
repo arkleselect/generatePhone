@@ -1,6 +1,7 @@
 """Optional local HTTP adapter; importing this module never opens a browser."""
 import asyncio
 import hmac
+import logging
 import os
 import re
 import sys
@@ -14,8 +15,14 @@ from config import Settings
 from dataset import GenerateRequest, Journal, validate_source
 
 
-def create_app(settings=None, controller_factory=Controller):
+def create_app(settings=None, controller_factory=None):
     settings = settings or Settings.load()
+    if controller_factory is None:
+        if os.getenv('ACCOUNT_ENGINE', 'browser') == 'cliproxy':
+            from proxy import ProxyController
+            controller_factory = ProxyController
+        else:
+            controller_factory = Controller
     token = os.getenv('CONTROL_TOKEN')
     if not token:
         raise ValueError('CONTROL_TOKEN is required; use main.py serve to create a local token file')
@@ -47,6 +54,11 @@ def create_app(settings=None, controller_factory=Controller):
     async def invalid(_request, exc):
         return JSONResponse({'message': str(exc)},status_code=400)
 
+    @app.exception_handler(Exception)
+    async def failed(_request, exc):
+        logging.getLogger(__name__).error('Worker request failed', exc_info=exc)
+        return JSONResponse({'message': '浏览器执行器操作失败，请检查 Chrome 连接授权和 data/browser/worker.log'}, status_code=500)
+
     @app.get('/status')
     async def status():
         return app.state.controller.status()
@@ -54,6 +66,13 @@ def create_app(settings=None, controller_factory=Controller):
     @app.post('/login')
     async def login():
         return await app.state.controller.login()
+
+    @app.post('/callback')
+    async def callback(body: dict):
+        controller = app.state.controller
+        if getattr(controller, 'channel', '') != 'CLIPROXY_CODEX':
+            raise ValueError('当前执行模式不支持提交 OAuth 回调')
+        return await controller.callback(body.get('url'))
 
     @app.post('/start')
     async def start():
@@ -65,6 +84,8 @@ def create_app(settings=None, controller_factory=Controller):
 
     @app.post('/generate-defects', status_code=202)
     async def generate(request: GenerateRequest):
+        if getattr(app.state.controller, 'channel', '') == 'CLIPROXY_CODEX':
+            raise ValueError('CLIProxyAPI 模式请在 Java/Vue 页面创建和确认任务')
         source_path = Path(request.source_image_path).expanduser()
         source = validate_source(source_path if source_path.is_absolute() else settings.input_root / source_path)
         output = Path(request.output_dir or settings.output_dir).expanduser()

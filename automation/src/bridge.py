@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 
 class Controller:
     """One browser owner and one work loop prevent competing CLI/HTTP submissions."""
+    channel = 'BROWSER_CHATGPT'
+    login_required_message = '请先打开浏览器并登录'
     def __init__(self, settings):
         self.settings = settings
         self.pw = self.context = self.page = None
@@ -29,7 +31,7 @@ class Controller:
         self.api_url = os.getenv('HAMLAB_API_URL', '')
         if self.api_url and not re.fullmatch(r'http://127\.0\.0\.1:\d+/api', self.api_url):
             raise ValueError('HAMLAB_API_URL must point to a local Java service')
-        self.client = httpx.AsyncClient(timeout=60, follow_redirects=False)
+        self.client = httpx.AsyncClient(timeout=60, follow_redirects=False, trust_env=False)
 
     def status(self):
         return {'phase': self.phase, 'message': self.message, 'enabled': self.enabled, 'taskId': self.task_id,
@@ -58,10 +60,16 @@ class Controller:
     async def start(self):
         if self.lock.locked():
             raise ValueError('已有任务执行中')
-        if not self.page or not await check_login_status(self.page):
-            raise ValueError('请先打开浏览器并登录')
+        if not await self.ready():
+            raise ValueError(self.login_required_message)
         self.enabled = True; self.paused = False; self.phase = 'IDLE'; self.message = '自动执行已开启，等待已确认任务'
         return self.status()
+
+    async def ready(self):
+        return bool(self.page) and await check_login_status(self.page)
+
+    async def execute_task(self, task, row, journal, allowed):
+        await run_one(self.page, row, journal, self.settings, before_submit=allowed)
 
     def pause(self):
         self.enabled = False; self.paused = True
@@ -114,12 +122,12 @@ class Controller:
             latest = await self.api('/batches/' + task['batchId'])
             return self.enabled and latest['batch']['status'] == 'ACTIVE'
         self.phase = 'RUNNING'; self.message = '正在执行任务 ' + task['id'][:8]
-        await run_one(self.page, row, journal, self.settings, before_submit=allowed)
+        await self.execute_task(task, row, journal, allowed)
         if row['status'] == 'SUCCEEDED':
             # Retry only the local import after a connection failure, never the image generation.
             data = Path(row['output_file_path']).read_bytes()
             await self.api('/tasks/' + task['id'] + '/result', 'POST', files={'file': ('generated.png', data, 'image/png')},
-                           data={'actualModel': '', 'channel': 'BROWSER_CHATGPT'})
+                           data={'actualModel': row.get('actual_model') or '', 'channel': self.channel})
             journal.update(row, java_imported=True)
             self.phase = 'IDLE'; self.message = '结果已保存，等待下一任务'
         elif row['status'] in ('FAILED','DENIED','UNKNOWN'):
@@ -152,11 +160,11 @@ class Controller:
                 elif self.enabled and self.api_url:
                     async with self.lock:
                         await self.ensure_browser(self.settings.headless)
-                        if not await check_login_status(self.page):
+                        if not await self.ready():
                             self.enabled = False; self.phase = 'LOGIN'; self.message = '请在浏览器确认登录状态'
                         else:
                             await self.next_java()
-                elif self.phase == 'LOGIN' and self.page and await check_login_status(self.page):
+                elif self.phase == 'LOGIN' and await self.ready():
                     self.phase = 'READY'; self.message = '已登录，状态保存在本机'
             except asyncio.CancelledError:
                 raise

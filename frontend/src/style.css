@@ -104,17 +104,13 @@ main { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; p
 .variant-list small { color: var(--color-muted); margin-left: 8px; }
 .variant-row { padding: 18px 0; border-top: 1px solid var(--color-border); }
 /* History and account handoff show persisted state without implying automatic generation. */
-.history-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 22px; align-items: start; }
-.batch-list { padding: 18px 12px; max-height: calc(100dvh - 220px); overflow-y: auto; }
-.batch-list h3 { padding: 4px 10px; margin-bottom: 18px; }
-.batch-list h3 small { color: var(--color-muted); }
-.batch-list button { width: 100%; padding: 15px 12px; border: 0; text-align: left; background: transparent; border-radius: 4px; }
-.batch-list button.active { background: #edf5ff; }
-.batch-list button b { display: flex; justify-content: space-between; font: 12px Menlo, monospace; color: #3c597d; }
-.batch-list button b span { font: 11px 'PingFang SC', sans-serif; color: #6c94c6; }
-.batch-list button p { font-size: 12px; margin: 8px 0; color: #75869a; }
-.batch-list button small { font-size: 10px; color: #94a1b2; }
-.history-detail { min-width: 0; }
+.history-layout { display: flex; flex-direction: column; gap: 18px; }
+.batch-picker { display: flex; align-items: center; gap: 18px; width: 100%; padding: 16px 22px; flex-wrap: wrap; }
+.batch-picker label { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.batch-picker label small { margin-left: 6px; color: var(--color-muted); }
+.batch-picker .el-select { flex: 1; min-width: 240px; max-width: 680px; }
+.batch-picker > .muted { margin-left: auto; font-size: 12px; }
+.history-detail { min-width: 0; width: 100%; }
 .stats { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; padding: 15px 0 25px; }
 .stats > div { display: flex; flex-direction: column; }
 .stats strong { font: 26px Menlo, monospace; color: #315f9a; }
@@ -167,7 +163,6 @@ main { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; p
 /* Responsive layouts preserve independent navigation and content scroll areas. */
 @media (max-width: 1200px) {
   .builder-layout { grid-template-columns: minmax(0, 1fr) 245px; }
-  .history-layout { grid-template-columns: 190px minmax(0, 1fr); }
   .stats { grid-template-columns: repeat(4, 1fr); row-gap: 20px; }
   .form-row { flex-wrap: wrap; }
   .form-row > .el-form-item { min-width: 180px; }
@@ -179,7 +174,6 @@ main { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; p
   .topbar { padding: 0 20px; }
   .builder-layout, .history-layout { grid-template-columns: 1fr; }
   .batch-summary { position: static; }
-  .batch-list { max-height: 230px; }
   .page-heading { align-items: flex-start; }
   .page-heading .el-button { font-size: 12px; padding: 10px; }
   .compare-grid { flex-wrap: wrap; }
@@ -237,3 +231,24 @@ main { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; p
 .task-current pre { white-space: pre-wrap; max-height: 260px; overflow: auto; font: inherit; line-height: 1.7; }
 .task-result-thumb { width: 90px; height: 70px; }
 @media (max-width: 600px) { .image-grid-compact { grid-template-columns: minmax(0,1fr); } }
+
+.task-status-tag { height: auto; min-height: 24px; white-space: normal; line-height: 1.5; padding: 3px 8px; }
+.task-status-tag .el-tag__content { white-space: normal; overflow-wrap: anywhere; }
+
+.history-tabs { margin: 28px 0 22px; }
+.history-tabs .el-tabs__header { margin: 0; }
+.history-tabs .el-tabs__nav-wrap::after { display: none; }
+.history-tabs .el-tabs__item { height: 48px; font-size: 14px; padding: 0 24px; color: #77818e; }
+.history-tabs .el-tabs__item.is-active { color: #1677ff; font-weight: 600; }
+.history-tabs .el-tabs__active-bar { height: 3px; background: #1677ff; }
+.history-tabs .el-tabs__content { display: none; }
+.history-table { border: 1px solid #edf0f5; border-radius: 8px; overflow: hidden; }
+.history-table.el-table th.el-table__cell { height: 64px; background: #f7f8fb !important; }
+.history-table.el-table td.el-table__cell { padding: 20px 0; border-bottom-color: #f0f2f5; }
+.history-table .cell { padding: 0 20px; line-height: 1.7; }
+.history-table .task-result-thumb { width: 112px; height: 84px; display: block; border-radius: 6px; }
+.history-table .task-status-tag { border-color: transparent; border-radius: 6px; padding: 5px 12px; }
+.history-view { padding-left: 0; }
+.history-view span[aria-hidden] { margin-left: 10px; font-size: 22px; line-height: 1; }
+.history-pagination { margin-top: 24px; justify-content: flex-start; gap: 10px; }
+.history-pagination > .muted { margin-left: 14px; font-size: 13px; }

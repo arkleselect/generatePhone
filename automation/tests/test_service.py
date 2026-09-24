@@ -6,6 +6,7 @@ from PIL import Image
 from fastapi.testclient import TestClient
 from config import Settings
 from service import create_app
+from browser import existing_chrome_endpoint
 
 
 class IdleController:
@@ -17,6 +18,27 @@ class IdleController:
         return
     def status(self):
         return {'phase': 'STOPPED', 'enabled': False}
+
+
+def test_login_errors_return_json(tmp_path, monkeypatch):
+    monkeypatch.setenv('CONTROL_TOKEN', 'offline-test-token')
+
+    class LoginController(IdleController):
+        async def login(self):
+            existing_chrome_endpoint(tmp_path)
+
+        async def start(self):
+            raise RuntimeError('internal details must not reach the client')
+
+    with TestClient(create_app(controller_factory=LoginController), raise_server_exceptions=False) as client:
+        headers = {'X-Worker-Token': 'offline-test-token'}
+        response = client.post('/login', headers=headers)
+        assert response.status_code == 400
+        assert 'chrome://inspect/#remote-debugging' in response.json()['message']
+        response = client.post('/start', headers=headers)
+        assert response.status_code == 500
+        assert 'worker.log' in response.json()['message']
+        assert 'internal details' not in response.text
 
 
 def test_http_auth_paths_and_queue(tmp_path, monkeypatch):

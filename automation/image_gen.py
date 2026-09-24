@@ -16,7 +16,7 @@ from pathlib import Path
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "src"))
 
-from browser import launch_browser, login_session, check_login_status  # noqa: E402
+from browser import launch_browser, close_browser, login_session, check_login_status  # noqa: E402
 from chatgpt import generate_batch  # noqa: E402
 from prompts import load_prompts  # noqa: E402
 
@@ -49,11 +49,7 @@ async def cmd_generate(args) -> int:
             return 2
         results = await generate_batch(page, prompts, output_dir)
     finally:
-        try:
-            await context.close()
-        except Exception:
-            pass
-        await pw.stop()
+        await close_browser(pw, context)
 
     log_path = output_dir / "results.json"
     log_path.write_text(json.dumps(results, indent=2), encoding="utf-8")

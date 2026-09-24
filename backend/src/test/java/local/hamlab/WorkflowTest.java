@@ -149,6 +149,28 @@ class WorkflowTest {
         assertThat(store.task(unknown.id()).status()).isEqualTo("CANCELLED");
         assertThat(store.task(success.id()).status()).isEqualTo("SUCCEEDED");
     }
+    @Test void deleteBatchPreservesInputsAndProtectsLiveOrGeneratedTasks() throws Exception {
+        Asset input=base();
+        String draftId=draft(List.of(input.id()),List.of(missing(1)),1);
+        batches.delete(draftId);
+        assertThat(store.assets()).extracting(Asset::id).contains(input.id());
+        assertThatThrownBy(()->store.batch(draftId)).hasMessageContaining("不存在");
+        String id=draft(List.of(input.id()),List.of(missing(1)),1);
+        confirm(id);
+        assertThatThrownBy(()->batches.delete(id)).hasMessageContaining("暂停");
+        batches.action(id,"pause");
+        for(String state:List.of("RUNNING","AWAITING_IMAGE","UNKNOWN")) {
+            store.jdbc().update("UPDATE image_task SET status=? WHERE batch_id=?",state,id);
+            assertThatThrownBy(()->batches.delete(id)).hasMessageContaining("待核实");
+            assertThat(store.tasks(id)).hasSize(1);
+        }
+        store.jdbc().update("UPDATE image_task SET status='SUCCEEDED',output_id=? WHERE batch_id=?",input.id(),id);
+        assertThatThrownBy(()->batches.delete(id)).hasMessageContaining("生成图片");
+        store.jdbc().update("UPDATE image_task SET status='FAILED',output_id=NULL WHERE batch_id=?",id);
+        batches.delete(id);
+        assertThat(store.tasks(id)).isEmpty();
+        assertThat(images.file(store.asset(input.id()),false)).exists();
+    }
     @Test void accountQueuePreservesInputAndImportsExactlyOnce() throws Exception {
         Asset a=base();
         String id=((Map<?,?>)batches.draft(new Draft("DEFECT","ACCOUNT",List.of(a.id()),DATE,List.of(),List.of(missing(1)),2)).get("batch")).get("id").toString();
@@ -157,9 +179,10 @@ class WorkflowTest {
         assertThat(account.next()).containsEntry("available",true);
         worker.tick(); assertThat(store.tasks(id).stream().filter(t->t.status().equals("AWAITING_IMAGE"))).hasSize(1);
         worker.recover(); assertThat(store.task(first.id()).status()).isEqualTo("AWAITING_IMAGE");
-        Asset result=account.complete(first.id(),png(),"","CODEX_IMAGE_TOOL");
+        Asset result=account.complete(first.id(),png(),"","CLIPROXY_CODEX");
         assertThat(result.parentPoseId()).isEqualTo(a.id());assertThat(result.sourceType()).isEqualTo("AI");
         assertThat(result.review()).isEqualTo("PENDING");assertThat(store.task(first.id()).actualModel()).isNull();
+        assertThat(store.task(first.id()).executionChannel()).isEqualTo("CLIPROXY_CODEX");
         assertThatThrownBy(()->account.complete(first.id(),png(),"","MANUAL_CHATGPT")).isInstanceOf(IllegalArgumentException.class);
         worker.tick(); Task second=(Task)account.next().get("task"); assertThat(second.inputId()).isEqualTo(a.id());
         assertThat(second.id()).isNotEqualTo(first.id());

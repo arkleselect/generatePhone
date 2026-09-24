@@ -53,6 +53,17 @@ public class Batches {
             UUID.randomUUID().toString(),batch,input.id(),input.rootSourceId(),store.json().write(p),prompt,store.json().write(settings),sequence);
     }
     public Map<String,Object> detail(String id) { return Map.of("batch",store.batch(id),"tasks",store.tasks(id)); }
+    @Transactional
+    public void delete(String id) {
+        var batch=lock(id);
+        require(!"ACTIVE".equals(batch.get("status")),"请先暂停或取消批次再删除");
+        require(store.jdbc().queryForObject("SELECT COUNT(*) FROM image_task WHERE batch_id=? AND status IN ('RUNNING','AWAITING_IMAGE','UNKNOWN')",Integer.class,id)==0,
+            "批次含执行中或结果待核实的任务，请先处理结果再删除");
+        require(store.jdbc().queryForObject("SELECT COUNT(*) FROM image_task t WHERE t.batch_id=? AND (t.output_id IS NOT NULL OR EXISTS (SELECT 1 FROM asset a WHERE a.task_id=t.id))",Integer.class,id)==0,
+            "批次已有生成图片，需保留任务来源记录，不能删除");
+        store.jdbc().update("DELETE FROM image_task WHERE batch_id=?",id);
+        store.jdbc().update("DELETE FROM batch WHERE id=?",id);
+    }
     private Map<String,Object> lock(String id) {
         return store.jdbc().queryForList("SELECT * FROM batch WHERE id=? FOR UPDATE",id).stream().findFirst().orElseThrow(()->new IllegalArgumentException("批次不存在"));
     }

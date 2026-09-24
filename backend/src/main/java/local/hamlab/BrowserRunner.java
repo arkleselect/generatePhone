@@ -53,8 +53,17 @@ public class BrowserRunner {
         return request(action,"POST");
     }
     private Map<?,?> request(String action,String method) throws Exception {
+        return request(action,method,"");
+    }
+    public synchronized Map<?,?> callback(String url) throws Exception {
+        require(process!=null && process.isAlive(),"请先点击登录 / 连接账号");
+        require(url!=null && url.length()<=16000,"回调网址无效");
+        return request("callback","POST",json.write(Map.of("url",url)));
+    }
+    private Map<?,?> request(String action,String method,String payload) throws Exception {
         var request=HttpRequest.newBuilder(URI.create("http://127.0.0.1:8091/"+action)).timeout(Duration.ofSeconds(40))
-            .header("X-Worker-Token",token).method(method,HttpRequest.BodyPublishers.noBody()).build();
+            .header("X-Worker-Token",token).header("Content-Type","application/json")
+            .method(method,HttpRequest.BodyPublishers.ofString(payload)).build();
         var response=client.send(request,HttpResponse.BodyHandlers.ofString());
         Map<?,?> body=json.read(response.body(),Map.class);
         require(response.statusCode()==200,Objects.toString(body.get("message"),"浏览器执行器不可用")); return body;

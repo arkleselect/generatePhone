@@ -25,7 +25,7 @@ public class AccountTasks {
     @Transactional
     public Asset complete(String id,byte[] bytes,String actualModel,String channel) throws IOException {
         require(actualModel!=null && actualModel.length()<=150,"实际模型记录过长");
-        require(Set.of("MANUAL_CHATGPT","CODEX_IMAGE_TOOL","BROWSER_CHATGPT").contains(channel),"执行渠道无效");
+        require(Set.of("MANUAL_CHATGPT","CODEX_IMAGE_TOOL","BROWSER_CHATGPT","CLIPROXY_CODEX").contains(channel),"执行渠道无效");
         var locked=store.jdbc().queryForList("SELECT status FROM image_task WHERE id=? FOR UPDATE",id);
         // A human can recover a known result after an ambiguous submission; automatic imports cannot.
         String status=locked.isEmpty()?"":Objects.toString(locked.getFirst().get("status"),"");

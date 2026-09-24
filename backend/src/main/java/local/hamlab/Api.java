@@ -37,6 +37,7 @@ public class Api {
     @GetMapping("/date-positions") public List<Map<String,Object>> positions(@RequestParam String date) { return prompts.mapping(date); }
     @GetMapping("/browser/status") public Map<?,?> browserStatus() { return browser.status(); }
     @PostMapping("/browser/{action}") public Map<?,?> browserAction(@PathVariable String action) throws Exception { return browser.action(action); }
+    @PostMapping("/browser/callback") public Map<?,?> browserCallback(@RequestBody Map<String,String> body) throws Exception { return browser.callback(body.get("url")); }
     @GetMapping("/defects") public Map<String,DefectCatalog.Definition> defects() { return DefectCatalog.ALL; }
     @GetMapping("/config") public Map<String,Object> config() { return Map.of("settings",config.settings(),"executionMode","ACCOUNT","maskSupported",false,"seedSupported",false); }
     @PutMapping("/config") public void configure(@RequestBody Settings settings) throws IOException { config.save(settings); }
@@ -52,6 +53,7 @@ public class Api {
     }
     @PostMapping("/assets/delete") public void deleteAssets(@RequestBody List<String> ids) { images.deleteAssets(ids); }
     @PostMapping("/batches") public Map<String,Object> draft(@RequestBody Draft draft) { return batches.draft(draft); }
+    @DeleteMapping("/batches/{id}") public void deleteBatch(@PathVariable String id) { batches.delete(id); }
     @PostMapping("/batches/{id}/confirm") public void confirm(@PathVariable String id,@RequestBody Confirm confirm) { batches.confirm(id,confirm); }
     @PostMapping("/batches/{id}/{action}") public void action(@PathVariable String id,@PathVariable String action) { batches.action(id,action); }
     @PostMapping("/tasks/{id}/resolve") public void resolve(@PathVariable String id,@RequestBody Map<String,Boolean> body) { batches.resolveUnknown(id,Boolean.TRUE.equals(body.get("verifiedNotAccepted"))); }

@@ -93,6 +93,14 @@ automation/.venv/bin/python -m playwright install chromium
 # automation/.env 中设置 BROWSER_CHANNEL=（留空）
 ```
 
+若要使用日常 Chrome 中已有的登录状态（Chrome 144+），在 `automation/.env` 中设置：
+
+```dotenv
+BROWSER_EXISTING_CHROME_DIR="~/Library/Application Support/Google/Chrome"
+```
+
+以上是 macOS 的 Chrome 用户数据根目录，其他系统请填实际根目录（包含 `DevToolsActivePort`，不是 `Default` 子目录）。在已登录的 Chrome 打开 `chrome://inspect/#remote-debugging`，启用远程调试。重启执行器后点击「登录 / 打开浏览器」，并允许 Chrome 的连接提示。程序使用现有默认浏览器上下文，新开任务标签页并复用 Cookie；不会读取或复制 Cookie 文件。退出执行器只断开连接，保留浏览器和标签页。此模式始终使用现有可见窗口，`HEADLESS` 不生效。未启用调试时会报错，不会回退到另一个未登录窗口。删除此配置可恢复原来的独立持久化浏览器。
+
 可复制 `automation/.env.example` 为 `automation/.env`。默认值：
 
 - `BROWSER_STATE_DIR`：项目 `data/browser/`。

@@ -21,7 +21,7 @@ ROOT = os.path.abspath(os.path.join(HERE, ".."))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "src"))
 
-from browser import launch_browser, check_login_status  # noqa: E402
+from browser import launch_browser, close_browser, check_login_status  # noqa: E402
 from chatgpt import generate_batch  # noqa: E402
 from prompts import load_prompts  # noqa: E402
 
@@ -52,11 +52,7 @@ async def _ensure_logged_in() -> bool:
         await page.goto("https://chatgpt.com/", wait_until="domcontentloaded")
         return await check_login_status(page)
     finally:
-        try:
-            await context.close()
-        except Exception:
-            pass
-        await pw.stop()
+        await close_browser(pw, context)
 
 
 def test_logged_in_or_skip():

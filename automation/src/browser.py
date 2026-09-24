@@ -14,6 +14,17 @@ PROFILE_DIR = str(Settings.load().profile_dir)
 logger = logging.getLogger(__name__)
 
 
+def existing_chrome_endpoint(directory):
+    """Use Chrome's opt-in debugging endpoint without reading cookies."""
+    try:
+        port, path = (Path(directory).expanduser() / 'DevToolsActivePort').read_text().splitlines()[:2]
+        if not port.isdecimal() or not 1 <= int(port) <= 65535 or not re.fullmatch(r'/devtools/browser/[A-Za-z0-9-]+', path):
+            raise ValueError('Invalid debugging endpoint')
+        return f'ws://127.0.0.1:{port}{path}'
+    except (OSError, ValueError) as exc:
+        raise ValueError('请先在已登录的 Chrome 中打开 chrome://inspect/#remote-debugging 并启用远程调试，再点击登录 / 打开浏览器') from exc
+
+
 class ProfileLock:
     """OS file lock prevents CLI, HTTP and Java from sharing one active browser profile."""
     def __init__(self, profile):
@@ -44,6 +55,20 @@ class ProfileLock:
 async def launch_browser(headless: bool = False, settings=None):
     """Keep the upstream (playwright, persistent context, page) return contract."""
     settings = settings or Settings.load()
+    existing = os.getenv('BROWSER_EXISTING_CHROME_DIR', '').strip()
+    if existing:
+        endpoint = existing_chrome_endpoint(existing)
+        pw = await async_playwright().start()
+        try:
+            browser = await pw.chromium.connect_over_cdp(endpoint, timeout=60000)
+            context = browser.contexts[0]
+            # Track ownership: never close the user's browser or its existing tabs.
+            pw._hamlab_attached = True
+            page = await context.new_page()
+            return pw, context, page
+        except BaseException:
+            await pw.stop()
+            raise
     profile = settings.profile_dir
     profile.mkdir(parents=True, exist_ok=True, mode=0o700)
     if os.name != 'nt':
@@ -102,7 +127,8 @@ async def check_login_status(page) -> bool:
 async def close_browser(pw, context):
     """Attempt both cleanups; an already-closed window is an expected user action."""
     try:
-        await context.close()
+        if not getattr(pw, '_hamlab_attached', False):
+            await context.close()
     except Exception:
         logger.info('浏览器窗口已关闭')
     finally:
