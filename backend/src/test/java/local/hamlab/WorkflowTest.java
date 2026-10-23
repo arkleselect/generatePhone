@@ -191,8 +191,24 @@ class WorkflowTest {
         List<String> prompts=store.tasks(batch).stream().map(Task::prompt).toList();
         assertThat(prompts.get(0)).contains("日期左侧、靠近左端","印染位置可以在日期编辑区域之外");
         assertThat(prompts.get(1)).contains("日期正上方");
-        assertThat(prompts.get(2)).contains("日期右侧的红色肠衣空白处");
+        assertThat(prompts.get(2)).contains("日期右侧的肠衣空白处");
         assertThat(prompts.get(3)).contains("日期正下方");
+    }
+    /** Casing and shape defects keep the date normal, need no date region and rotate their variants. */
+    @Test void casingDefectsSkipDateRegionAndRotateVariants() throws Exception {
+        Asset unframed=images.upload(png(),"POSE",DATE);
+        images.review(unframed.id(),new Review("APPROVED","normal","OK",""));
+        Defect seam=new Defect("seam_weld",List.of(),"中度","","","","");
+        String batch=draft(List.of(unframed.id()),List.of(seam),3);
+        List<Task> tasks=store.tasks(batch);
+        assertThat(tasks).allMatch(t->t.params().roi()==null);
+        assertThat(tasks.get(0).prompt()).contains("靠近一端铝卡扣的一段焊缝","日期本身不施加任何缺陷","红色或金色").doesNotContain("归一化坐标","{location}");
+        assertThat(tasks.get(1).prompt()).contains("产品中段的一段焊缝");
+        String bent=prompts.build("DEFECT",new Params(DATE,pose,new Defect("bent",List.of(),"轻度","","","",""),null));
+        assertThat(bent).contains("允许产品主体按要求整体弯曲变形","向一侧凸出的单弧形");
+        assertThatThrownBy(()->draft(List.of(unframed.id()),List.of(missing(1)),1)).hasMessageContaining("日期编辑区域");
+        confirm(batch); worker.tick();
+        exports.zip(OutputStream.nullOutputStream(),store.assets().stream().filter(a->a.role().equals("RESULT")).toList());
     }
     @Test void defectReferenceRequiresMatchingReviewAndGeneratesSameClassOnly() throws Exception {
         Asset reference=images.upload(png(),"DEFECT_REF",DATE);

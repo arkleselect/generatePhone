@@ -27,7 +27,9 @@ export const statusText: Record<string, string> = {
 }
 // Definitions come from the shared catalog; historical task ids remain unchanged.
 export const defectNames: Record<string, string> = reactive({})
-export const defectDefinitions = reactive<Record<string, {label: string; datasetType: string; positions: boolean; severity: boolean}>>({})
+export const defectDefinitions = reactive<Record<string, {label: string; datasetType: string; positions: boolean; severity: boolean; scope: 'date' | 'casing' | 'shape'}>>({})
+// Casing and shape defects are generated outside the date region and need no date ROI.
+export const needsDateRegion = (type: string) => (defectDefinitions[type]?.scope ?? 'date') === 'date'
 export async function loadDefects() {
   const definitions = await api<typeof defectDefinitions>('/defects')
   Object.assign(defectDefinitions, definitions)

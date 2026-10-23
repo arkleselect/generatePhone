@@ -45,12 +45,6 @@ def slugify(text: str, max_len: int = 60) -> str:
 # Industrial templates share the catalog consumed by the Java service and Vue UI.
 CATALOG_PATH = Path(__file__).resolve().parents[2] / 'config/defects.json'
 DEFECTS = json.loads(CATALOG_PATH.read_text(encoding='utf-8'))
-INK_LOCATIONS = (
-    '日期左侧、靠近左端的红色肠衣空白处，与日期完全分离',
-    '产品中段的红色肠衣表面、日期正上方，与字符留出空隙',
-    '日期右侧的红色肠衣空白处，与日期完全分离',
-    '产品中段的红色肠衣表面、日期正下方，与字符留出空隙',
-)
 
 
 def defect_key(value: str) -> str:
@@ -83,16 +77,26 @@ def build_defect_prompt(defect_type: str, date_text: str | None = None, suffix: 
         selected = sorted(random.sample(digits, 1))
         positions = '、'.join(f'第{i}位「{date_text[i-1]}」' for i in selected)
     direction = random.choice(['左', '右', '上', '下']) if key == 'ink_transfer' else '右'
+    scope = definition.get('scope', 'date')
     effect = definition['effect'].format(positions=positions, part='局部笔画', direction=direction,
-        location=random.choice(INK_LOCATIONS), object='少量浅灰色碎屑', description=suffix)
-    date_instruction = ('先在原喷码区域建立完整日期 ' + date_text + '，再施加指定缺陷。位置按阅读顺序编号，与产品旋转无关。') if date_text else '沿用参考图日期内容，只修改指定缺陷；不要随意新增或更换日期。'
+        location=random.choice(definition.get('variants') or ['']), object='少量浅灰色碎屑', description=suffix)
+    if scope == 'date':
+        date_instruction = ('先在原喷码区域建立完整日期 ' + date_text + '，再施加指定缺陷。位置按阅读顺序编号，与产品旋转无关。') if date_text else '沿用参考图日期内容，只修改指定缺陷；不要随意新增或更换日期。'
+        scope_instruction = ('仅修改生产日期和指定印染位置的一小处肠衣表面，印染可以位于日期之外。' if key == 'ink_transfer'
+            else '仅修改生产日期喷码区域以及实现指定缺陷必需的紧邻区域，') + '其余区域尽量不变。不继承旧缺陷。喷码保留自然细小点阵和肠衣纹理，避免电脑描边文字。'
+        date_rule = '字符缺失后其余字符保持原位，不前移、不重新居中、不压缩间距。正常样本的日期应完整清晰。'
+    else:
+        # Casing and shape defects keep the date normal and edit outside the date region.
+        date_instruction = ('在原喷码位置保持完整正常的日期 ' + date_text + '，日期本身不施加缺陷。') if date_text else '沿用参考图日期内容，日期本身不施加缺陷。'
+        scope_instruction = ('允许产品主体按要求整体弯曲变形，背景、相机视角、曝光、颜色和材质不变。' if scope == 'shape'
+            else '仅修改本次缺陷所在的局部肠衣、焊缝或端头及其紧邻区域，其余区域尽量不变。') + '不继承旧缺陷。'
+        date_rule = '缺陷要清楚可见、位置明确；全图只有这一处主要缺陷，其余肠衣、焊缝、卡扣和日期保持正常。'
     return '\n'.join([
         '请使用上传的原图实际生成一张工业视觉训练样本，不要仅返回文字，不要生成拼图。',
-        '产品为红色塑料肠衣包装的火腿肠，白色背景、真实简洁的工厂采集照片风格。以参考图为准，保持主体、背景、光照、角度、颜色、材质、摆放姿势和整体构图一致；原背景不是白色时也不要擅自替换。',
-        ('仅修改生产日期和指定印染位置的一小处红色肠衣表面，印染可以位于日期之外。' if key == 'ink_transfer'
-         else '仅修改生产日期喷码区域以及实现指定缺陷必需的紧邻区域，') + '其余区域尽量不变。不继承旧缺陷。喷码保留自然细小点阵和肠衣纹理，避免电脑描边文字。',
+        '产品为塑料肠衣包装的火腿肠，两端为铝卡扣扎口，纵向有一条热封焊缝；肠衣颜色以参考图为准（常见红色或金色），不得改变颜色。白色背景、真实简洁的工厂采集照片风格。以参考图为准，保持主体、背景、光照、角度、颜色、材质、' + ('整体构图一致（产品弯曲形状除外）' if scope == 'shape' else '摆放姿势和整体构图一致') + '；原背景不是白色时也不要擅自替换。',
+        scope_instruction,
         date_instruction, '本次唯一主要效果：' + effect + ('。程度：中度。' if definition['severity'] else '。'),
-        '字符缺失后其余字符保持原位，不前移、不重新居中、不压缩间距。正常样本的日期应完整清晰。',
+        date_rule,
         '不做海报风，不添加额外文字、水印、标注框、箭头、无关物体或夸张艺术效果。',
         ('额外要求：' + suffix) if suffix else '',
     ]).strip()

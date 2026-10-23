@@ -28,16 +28,18 @@ public class Batches {
         String batch=UUID.randomUUID().toString();
         store.jdbc().update("INSERT INTO batch(id,stage,status,mode) VALUES(?,?,'DRAFT',?)",batch,d.stage(),d.mode());
         int sequence=0;
-        int inkLocationIndex=0;
+        Map<String,Integer> variantIndex=new HashMap<>();
         // Date-major order ensures complete coverage before moving on to another date.
         for(var sample:planned) for(String id:d.inputIds()) {
             Asset input=store.asset(id); validateInput(input,d.stage(),d.mode(),sample.defect());
             if(d.stage().equals("DEFECT") && d.randomization()==null)
                 require(input.baseDate().equals(sample.date()),"底图日期与任务日期不一致，请使用新的日期采样配置");
+            // Casing and shape defects lie outside the date region, so they carry no date edit mask.
+            boolean dateRegion=d.stage().equals("DEFECT") && DefectCatalog.dateScoped(sample.defect().type());
             Params p=new Params(sample.date(),sample.pose()==null?input.pose():sample.pose(),sample.defect(),
-                d.stage().equals("DEFECT")?input.roi():null,d.randomization());
-            String prompt=prompts.build(d.stage(),p,input.role().equals("DEFECT_REF"),inkLocationIndex)+"\n画幅偏好："+config.settings().size()+"。实际输出尺寸以生成文件为准。";
-            if(sample.defect()!=null && "ink_transfer".equals(sample.defect().type())) inkLocationIndex++;
+                dateRegion?input.roi():null,d.randomization());
+            int variant=sample.defect()==null?0:variantIndex.merge(sample.defect().type(),1,Integer::sum)-1;
+            String prompt=prompts.build(d.stage(),p,input.role().equals("DEFECT_REF"),variant)+"\n画幅偏好："+config.settings().size()+"。实际输出尺寸以生成文件为准。";
             insert(batch,input,p,prompt,config.settings(),++sequence);
         }
         return detail(batch);
@@ -47,7 +49,7 @@ public class Batches {
         if(stage.equals("POSE")) require(input.role().equals("SOURCE"), "姿势生成只接受原始参考图");
         else {
             require(java.util.Set.of("POSE","DEFECT_REF").contains(input.role()) && input.review().equals("APPROVED"),"缺陷生成必须使用已审核通过的底图或缺陷参考图");
-            Prompts.roi(input.roi());
+            if(defect==null || DefectCatalog.dateScoped(defect.type())) Prompts.roi(input.roi());
             if(input.role().equals("DEFECT_REF")) require(defect!=null && defect.type().equals(input.label()),"缺陷参考图只能生成相同缺陷类别");
         }
         require(!mode.equals("ACCOUNT") || !input.sourceType().equals("TEST"),"测试图片不能用于账号生图");

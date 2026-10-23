@@ -139,3 +139,11 @@ def test_profile_lock(setup):
     finally:
         first.release()
     second.acquire(); second.release()
+
+
+def test_casing_defects_keep_date_normal():
+    for key in ['casing_tear', 'seam_weld', 'clip_burst', 'bent']:
+        prompt = build_defect_prompt(key, '2026.09.24')
+        assert '日期本身不施加缺陷' in prompt and '仅修改生产日期' not in prompt
+        assert '红色或金色' in prompt and '{location}' not in prompt
+    assert '弯曲形状除外' in build_defect_prompt('弯曲产品', '2026.09.24')

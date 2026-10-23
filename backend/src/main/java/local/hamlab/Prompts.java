@@ -10,15 +10,10 @@ import static local.hamlab.Models.*;
 /** Validates business parameters once and expands maintainable stage-specific templates. */
 @Service
 public class Prompts {
-    private static final List<String> INK_LOCATIONS = List.of(
-        "日期左侧、靠近左端的红色肠衣空白处，与日期完全分离",
-        "产品中段的红色肠衣表面、日期正上方，与字符留出空隙",
-        "日期右侧的红色肠衣空白处，与日期完全分离",
-        "产品中段的红色肠衣表面、日期正下方，与字符留出空隙");
     public static final Set<String> TYPES = DefectCatalog.ALL.keySet();
     public static final Set<String> POSITION_TYPES = DefectCatalog.positionTypes();
     public static final Set<String> SEVERITY_TYPES = DefectCatalog.severityTypes();
-    private final String common = template("common"), pose = template("pose"), defect = template("defect");
+    private final String common = template("common"), pose = template("pose"), defect = template("defect"), casing = template("casing");
     private static String template(String name) {
         try (var stream = new ClassPathResource("prompts/" + name + ".txt").getInputStream()) {
             return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
@@ -62,19 +57,27 @@ public class Prompts {
     public String build(String stage, Params p, boolean defectReference) {
         return build(stage,p,defectReference,0);
     }
-    public String build(String stage, Params p, boolean defectReference, int inkLocationIndex) {
+    /** variantIndex rotates the catalog's location or form variants across one batch. */
+    public String build(String stage, Params p, boolean defectReference, int variantIndex) {
         date(p.baseDate()); pose(p.pose());
         String map = IntStream.range(0,p.baseDate().length()).mapToObj(i -> "第"+(i+1)+"位："+p.baseDate().charAt(i)).reduce((a,b)->a+"；"+b).orElse("");
         String body;
         if ("POSE".equals(stage)) body = pose.replace("{{effect}}", poseEffect(p.pose()));
         else {
-            defect(p.defect(), p.baseDate()); roi(p.roi());
-            boolean inkTransfer="ink_transfer".equals(p.defect().type());
-            body = defect.replace("{{effect}}", defectEffect(p.defect(),p.baseDate(),inkLocationIndex))
-                .replace("{{roi}}",p.roi().toString())
-                .replace("{{edit_scope}}",inkTransfer
-                    ? "只编辑日期和本张指定位置的一小处红色肠衣表面；印染位置可以在日期编辑区域之外。"
-                    : "只编辑日期及实现本次缺陷所必需的紧邻区域。");
+            defect(p.defect(), p.baseDate());
+            String scope=DefectCatalog.ALL.get(p.defect().type()).scope();
+            String effect=defectEffect(p.defect(),p.baseDate(),variantIndex);
+            if("date".equals(scope)) {
+                roi(p.roi());
+                boolean inkTransfer="ink_transfer".equals(p.defect().type());
+                body = defect.replace("{{effect}}", effect)
+                    .replace("{{roi}}",p.roi().toString())
+                    .replace("{{edit_scope}}",inkTransfer
+                        ? "只编辑日期和本张指定位置的一小处肠衣表面；印染位置可以在日期编辑区域之外。"
+                        : "只编辑日期及实现本次缺陷所必需的紧邻区域。");
+            } else body = casing.replace("{{effect}}", effect).replace("{{edit_scope}}","shape".equals(scope)
+                ? "保持背景、相机视角、曝光、肠衣颜色和材质不变，产品中心位置和长度尽量不变；允许产品主体按要求整体弯曲变形，这是本次唯一允许的形状变化。"
+                : "固定当前底图的产品姿势、背景、构图和曝光，只编辑本次缺陷所在的局部肠衣、焊缝或端头及其紧邻区域。");
         }
         if(defectReference) require("DEFECT".equals(stage),"缺陷参考图只用于阶段B");
         String referenceInstruction = defectReference
@@ -95,12 +98,14 @@ public class Prompts {
         };
         return effect + "。补充：" + p.description();
     }
-    private String defectEffect(Defect d, String date, int inkLocationIndex) {
+    private String defectEffect(Defect d, String date, int variantIndex) {
+        var definition = DefectCatalog.ALL.get(d.type());
+        String variant = definition.variants().isEmpty() ? "" : definition.variants().get(Math.floorMod(variantIndex,definition.variants().size()));
         String positions = d.positions().stream().sorted().map(i -> "第"+i+"位「"+date.charAt(i-1)+"」").reduce((a,b)->a+"、"+b).orElse("全部字符");
-        String effect = DefectCatalog.ALL.get(d.type()).effect()
+        String effect = definition.effect()
             .replace("{positions}",positions).replace("{part}",Objects.toString(d.part(),""))
             .replace("{direction}",Objects.toString(d.direction(),""))
-            .replace("{location}",INK_LOCATIONS.get(Math.floorMod(inkLocationIndex,INK_LOCATIONS.size())))
+            .replace("{location}",variant)
             .replace("{object}",Objects.toString(d.object(),""))
             .replace("{description}",Objects.toString(d.description(),""));
         return effect + (SEVERITY_TYPES.contains(d.type()) ? "。程度："+d.severity() : "") + "。补充："+d.description();

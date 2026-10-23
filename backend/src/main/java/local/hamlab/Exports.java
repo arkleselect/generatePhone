@@ -31,7 +31,10 @@ public class Exports {
                 m.put("source_type",a.sourceType());m.put("synthetic",a.sourceType().equals("AI"));m.put("base_date",a.baseDate());
                 m.put("pose",a.pose());m.put("expected_defect",task.params().defect());m.put("human_label",a.label());m.put("quality",a.quality());
                 m.put("review",a.review());m.put("rejection_reason",a.rejectionReason());m.put("prompt",task.prompt());m.put("settings",task.settings());
-                m.put("generation_parameters",Map.of("image_id",task.inputId(),"edit_roi",task.params().roi(),"task_id",task.id(),"parameters_are_prompt_preferences",true));
+                // Casing and shape defects have no date edit region, so edit_roi may be null.
+                Map<String,Object> generation=new LinkedHashMap<>();
+                generation.put("image_id",task.inputId());generation.put("edit_roi",task.params().roi());generation.put("task_id",task.id());generation.put("parameters_are_prompt_preferences",true);
+                m.put("generation_parameters",generation);
                 m.put("actual_model",task.actualModel());m.put("execution_channel",task.executionChannel());
                 m.put("provider_request_id",task.providerRequestId());m.put("filename",name);m.put("width",a.width());m.put("height",a.height());
                 m.put("created_at",a.createdAt());m.put("spatial_annotation",a.annotations().isEmpty()?null:a.annotations());
