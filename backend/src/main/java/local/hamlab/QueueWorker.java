@@ -41,7 +41,7 @@ public class QueueWorker {
         var tasks=store.jdbc().query("SELECT * FROM image_task WHERE batch_id=? AND status='PENDING' ORDER BY sequence_no,created_at,id LIMIT 1 FOR UPDATE",store.taskMapper(),batch.get("id"));
         if(tasks.isEmpty()) return null;
         Task task=tasks.getFirst();
-        try { batches.validateInput(store.asset(task.inputId()),(String)batch.get("stage"),(String)batch.get("mode")); }
+        try { batches.validateInput(store.asset(task.inputId()),(String)batch.get("stage"),(String)batch.get("mode"),task.params().defect()); }
         catch(IllegalArgumentException e) { store.jdbc().update("UPDATE image_task SET status='FAILED',error='参考图不再符合审核条件' WHERE id=?",task.id());return null; }
         String state="ACCOUNT".equals(batch.get("mode")) ? "AWAITING_IMAGE" : "RUNNING";
         store.jdbc().update("UPDATE image_task SET status=?,attempts=attempts+1 WHERE id=? AND status='PENDING'",state,task.id());

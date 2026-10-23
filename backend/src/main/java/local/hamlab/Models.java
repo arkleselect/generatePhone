@@ -7,6 +7,7 @@ import java.util.List;
 public final class Models {
     private Models() {}
     public record Roi(double x, double y, double width, double height) {}
+    public record Annotation(String classId, Roi box) {}
     public record Pose(String kind, double angle, double shift, String description) {}
     public record Defect(String type, List<Integer> positions, String severity, String part,
                          String direction, String object, String description) {}
@@ -18,7 +19,7 @@ public final class Models {
     public record Settings(String provider, String baseUrl, String model, String size, String quality, int timeoutSeconds) {}
     public record Asset(String id, String rootSourceId, String parentPoseId, String role, String sourceType,
                         String filename, int width, int height, long fileSize, String baseDate, Pose pose,
-                        Roi roi, String review, String label, String quality, String rejectionReason,
+                        Roi roi, List<Annotation> annotations, String review, String label, String quality, String rejectionReason,
                         String taskId, Instant createdAt) {}
     public record Task(String id, String batchId, String inputId, String rootSourceId, String status,
                        Params params, String prompt, Settings settings, int attempts, String error,

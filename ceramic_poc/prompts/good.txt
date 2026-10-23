@@ -1,0 +1,13 @@
+A realistic industrial machine vision inspection photograph of a single plain white square ceramic tile, viewed directly from above at a perfectly perpendicular 90-degree angle.
+
+The tile is centered on a uniform neutral gray matte background. The entire tile is visible with consistent margins on all four sides.
+
+The ceramic surface is smooth, clean, intact, and uniformly white, with subtle natural material texture.
+
+Soft and even industrial inspection lighting, minimal shadows, no strong reflections, sharp focus, high detail, realistic camera image.
+
+Fixed camera position, fixed focal length, consistent object scale, consistent background, consistent illumination.
+
+No defects, no scratches, no cracks, no stains, no chips, no dirt, no markings, no text, no logos, no watermark, no additional objects.
+
+Square image, 1024x1024 resolution.

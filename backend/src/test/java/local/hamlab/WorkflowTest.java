@@ -93,6 +93,54 @@ class WorkflowTest {
         assertThat(images.file(first,false)).exists();
         assertThat(images.file(first,true)).exists();
     }
+    @Test void rejectedOutputDeletionKeepsTaskHistoryAndInputs() throws Exception {
+        Asset input=base(); String batch=draft(List.of(input.id()),List.of(missing(1)),1);
+        confirm(batch); worker.tick();
+        Task task=store.tasks(batch).getFirst(); Asset output=store.asset(task.outputId());
+        assertThatThrownBy(()->images.deleteOutputs("wrong-batch",List.of(output.id()))).hasMessageContaining("不属于");
+        assertThat(images.file(output,false)).exists();
+        images.deleteOutputs(batch,List.of(output.id()));
+        assertThat(store.task(task.id()).status()).isEqualTo("DELETED");
+        assertThat(store.task(task.id()).outputId()).isNull();
+        assertThatThrownBy(()->store.asset(output.id())).hasMessageContaining("不存在");
+        assertThat(images.file(output,false)).doesNotExist();
+        assertThat(images.file(output,true)).doesNotExist();
+        Asset source=images.upload(png(),"SOURCE",DATE);
+        String poses=((Map<?,?>)batches.draft(new Draft("POSE","TEST",List.of(source.id()),DATE,List.of(pose),List.of(),1)).get("batch")).get("id").toString();
+        confirm(poses); worker.tick();
+        Asset generatedPose=store.asset(store.tasks(poses).getFirst().outputId());
+        images.region(generatedPose.id(),roi); images.review(generatedPose.id(),new Review("APPROVED","normal","OK",""));
+        draft(List.of(generatedPose.id()),List.of(missing(1)),1);
+        assertThatThrownBy(()->images.deleteOutputs(poses,List.of(generatedPose.id()))).hasMessageContaining("引用");
+        assertThat(images.file(generatedPose,false)).exists();
+    }
+    @Test void purgeBatchRemovesGeneratedFilesButPreservesSharedInputs() throws Exception {
+        Asset input=base();
+        String batch=draft(List.of(input.id()),List.of(missing(1)),1);
+        confirm(batch); worker.tick();
+        Asset output=store.asset(store.tasks(batch).getFirst().outputId());
+        batches.purge(batch);
+        assertThatThrownBy(()->store.batch(batch)).hasMessageContaining("不存在");
+        assertThatThrownBy(()->store.asset(output.id())).hasMessageContaining("不存在");
+        assertThat(images.file(output,false)).doesNotExist();
+        assertThat(images.file(output,true)).doesNotExist();
+        assertThat(store.asset(input.id())).isNotNull();
+        assertThat(images.file(input,false)).exists();
+
+        Asset source=images.upload(png(),"SOURCE",DATE);
+        String poses=((Map<?,?>)batches.draft(new Draft("POSE","TEST",List.of(source.id()),DATE,List.of(pose),List.of(),1)).get("batch")).get("id").toString();
+        confirm(poses); worker.tick();
+        Asset generatedPose=store.asset(store.tasks(poses).getFirst().outputId());
+        images.region(generatedPose.id(),roi); images.review(generatedPose.id(),new Review("APPROVED","normal","OK",""));
+        String dependent=draft(List.of(generatedPose.id()),List.of(missing(1)),1);
+        assertThatThrownBy(()->batches.purge(poses)).hasMessageContaining("引用");
+        assertThat(store.asset(generatedPose.id())).isNotNull();
+        assertThat(images.file(generatedPose,false)).exists();
+        batches.delete(dependent);
+        batches.purge(poses);
+        assertThat(images.file(generatedPose,false)).doesNotExist();
+        assertThat(store.asset(source.id())).isNotNull();
+    }
     /** Newly configured industrial classes generate prompts without changing historical task ids. */
     @Test void sharedCatalogAndUnknownManualRecovery() throws Exception {
         assertThat(Prompts.TYPES).contains("blur","stain","misalignment","normal","no_print");
@@ -120,6 +168,49 @@ class WorkflowTest {
         assertThat(pair).contains("第5位「0」、第6位「9」完全缺失");
         assertThat(tail).contains("第5位「0」、第6位「9」、第7位「2」、第8位「7」完全缺失","绝不能前移");
         assertThatThrownBy(()->prompts.build("DEFECT",new Params("123",pose,missing(5),roi))).isInstanceOf(IllegalArgumentException.class);
+    }
+    @Test void partialBreakKeepsEachDigitVisible() {
+        Defect broken=new Defect("partial_break",List.of(2),"中度","局部笔画","","","");
+        String prompt=prompts.build("DEFECT",new Params(DATE,pose,broken,roi));
+        assertThat(prompt).contains("第2位「0」","局部一段点阵或笔画中断","保留可辨认的数字主体","不能整字消失");
+    }
+    @Test void dropoutAndInkTransferStayDistinct() {
+        Defect dropout=new Defect("multi_break",List.of(2),"中度","","右","","");
+        String lost=prompts.build("DEFECT",new Params(DATE,pose,dropout,roi));
+        assertThat(lost).contains("第2位「0」","墨点局部脱落或被擦除","不要形成沿表面拖开的墨迹");
+        Defect transfer=new Defect("ink_transfer",List.of(),"中度","","下","","");
+        String dyed=prompts.build("DEFECT",new Params(DATE,pose,transfer,roi));
+        assertThat(dyed).contains("沿下方向","细短、稀疏、半透明的灰暗色竖向擦拖细纹","日期主体仍清楚可读","不生成整字掉码");
+        Randomization fixed=new Randomization("FIXED","2027-12-20","2027-12-31","yyyyMMdd",8);
+        var coverage=new Draft("DEFECT","TEST",List.of("input"),DATE,List.of(),List.of(dropout),1,fixed,new Coverage("ALL",0));
+        assertThat(plans.expand(coverage)).hasSize(255).anyMatch(sample->sample.defect().positions().size()==1);
+    }
+    @Test void inkTransferBatchCoversSurfacePositions() throws Exception {
+        Defect transfer=new Defect("ink_transfer",List.of(),"轻度","","上","","");
+        String batch=draft(List.of(base().id()),List.of(transfer),4);
+        List<String> prompts=store.tasks(batch).stream().map(Task::prompt).toList();
+        assertThat(prompts.get(0)).contains("日期左侧、靠近左端","印染位置可以在日期编辑区域之外");
+        assertThat(prompts.get(1)).contains("日期正上方");
+        assertThat(prompts.get(2)).contains("日期右侧的红色肠衣空白处");
+        assertThat(prompts.get(3)).contains("日期正下方");
+    }
+    @Test void defectReferenceRequiresMatchingReviewAndGeneratesSameClassOnly() throws Exception {
+        Asset reference=images.upload(png(),"DEFECT_REF",DATE);
+        Defect transfer=new Defect("ink_transfer",List.of(),"中度","","下","","");
+        assertThatThrownBy(()->draft(List.of(reference.id()),List.of(transfer),1)).hasMessageContaining("审核");
+        assertThatThrownBy(()->images.review(reference.id(),new Review("APPROVED","normal","OK",""))).hasMessageContaining("缺陷参考图");
+        assertThatThrownBy(()->images.review(reference.id(),new Review("APPROVED","ink_transfer","OK",""))).hasMessageContaining("缺陷参考图");
+        images.review(reference.id(),new Review("APPROVED","ink_transfer","NG",""));
+        assertThatThrownBy(()->draft(List.of(reference.id()),List.of(transfer),1)).hasMessageContaining("日期编辑区域");
+        images.region(reference.id(),roi);
+        assertThatThrownBy(()->draft(List.of(reference.id()),List.of(missing(1)),1)).hasMessageContaining("相同缺陷类别");
+        String batch=draft(List.of(reference.id()),List.of(transfer),1);
+        Task task=store.tasks(batch).getFirst();
+        assertThat(task.prompt()).contains("参考原有同类缺陷的形态","改变缺陷的具体位置").doesNotContain("不要继承参考图的旧缺陷");
+        assertThat(task.inputId()).isEqualTo(reference.id());
+        confirm(batch); worker.tick();
+        assertThat(store.asset(store.task(task.id()).outputId()).parentPoseId()).isEqualTo(reference.id());
+        assertThatThrownBy(()->images.deleteSource(reference.id())).hasMessageContaining("引用");
     }
     @Test void batchExpansionKeepsEveryInputFixedAndRequiresConfirmation() throws Exception {
         Asset a=base(), b=base(); String id=draft(List.of(a.id(),b.id()),List.of(missing(1),missing(5,6)),3);
@@ -149,7 +240,7 @@ class WorkflowTest {
         assertThat(store.task(unknown.id()).status()).isEqualTo("CANCELLED");
         assertThat(store.task(success.id()).status()).isEqualTo("SUCCEEDED");
     }
-    @Test void batchReviewApprovesOutputsAndRejectsOnlySelectedImages() throws Exception {
+    @Test void batchReviewApprovesOutputsOnlyOnce() throws Exception {
         Asset input=base();
         String id=draft(List.of(input.id()),List.of(missing(1)),2);
         confirm(id); worker.tick(); worker.tick();
@@ -163,10 +254,9 @@ class WorkflowTest {
         }
         assertThatThrownBy(()->images.reviewBatch(id,new BatchReview(List.of(ids.getFirst(),input.id()),"REJECTED","bad"))).hasMessageContaining("不属于");
         assertThat(store.asset(ids.getFirst()).review()).isEqualTo("APPROVED");
-        assertThatThrownBy(()->images.reviewBatch(id,new BatchReview(ids,"REJECTED",""))).hasMessageContaining("原因");
-        images.reviewBatch(id,new BatchReview(List.of(ids.getFirst()),"REJECTED","日期乱码"));
-        assertThat(store.asset(ids.getFirst()).review()).isEqualTo("REJECTED");
-        assertThat(store.asset(ids.getFirst()).rejectionReason()).isEqualTo("日期乱码");
+        assertThatThrownBy(()->images.reviewBatch(id,new BatchReview(List.of(ids.getFirst()),"REJECTED","日期乱码"))).hasMessageContaining("已审核");
+        assertThatThrownBy(()->images.review(ids.getFirst(),new Review("APPROVED","missing_chars","NG",""))).hasMessageContaining("已审核");
+        assertThat(store.asset(ids.getFirst()).review()).isEqualTo("APPROVED");
         assertThat(store.asset(ids.getLast()).review()).isEqualTo("APPROVED");
         Asset source=images.upload(png(),"SOURCE",DATE);
         String poses=((Map<?,?>)batches.draft(new Draft("POSE","TEST",List.of(source.id()),DATE,List.of(pose),List.of(),1)).get("batch")).get("id").toString();
@@ -234,6 +324,25 @@ class WorkflowTest {
         store.jdbc().update("UPDATE asset SET source_type='TEST' WHERE id=?",results.get(0).id());
         assertThat(exports.select("","","APPROVED")).isEmpty();
     }
+    @Test void defectBoxesPersistAndExportAsYoloLabels() throws Exception {
+        Asset pose=base();String batch=draft(List.of(pose.id()),List.of(missing(1)),1);
+        Task task=store.tasks(batch).getFirst();Asset result=images.generated(png(),task,"DEFECT","ACCOUNT");
+        assertThatThrownBy(()->images.annotate(result.id(),List.of(new Annotation("partial_break",roi)))).hasMessageContaining("已审核");
+        images.review(result.id(),new Review("APPROVED","partial_break","NG",""));
+        Annotation box=new Annotation("partial_break",new Roi(.2,.3,.5,.2));
+        assertThat(images.annotate(result.id(),List.of(box)).annotations()).containsExactly(box);
+        assertThatThrownBy(()->images.annotate(result.id(),List.of(new Annotation("normal",roi)))).hasMessageContaining("类别");
+        assertThatThrownBy(()->images.annotate(result.id(),List.of(new Annotation("blur",new Roi(.9,.3,.5,.2))))).hasMessageContaining("区域");
+        assertThat(store.asset(result.id()).annotations()).containsExactly(box);
+        ByteArrayOutputStream bytes=new ByteArrayOutputStream();exports.detectionZip(bytes,List.of(store.asset(result.id())));
+        Map<String,String> entries=new HashMap<>();
+        try(ZipInputStream zip=new ZipInputStream(new ByteArrayInputStream(bytes.toByteArray()))) {
+            for(var entry=zip.getNextEntry();entry!=null;entry=zip.getNextEntry())
+                if(!entry.getName().startsWith("images/")) entries.put(entry.getName(),new String(zip.readAllBytes(),StandardCharsets.UTF_8));
+        }
+        assertThat(entries.get("classes.txt")).isEqualTo("partial_break\n");
+        assertThat(entries.get("labels/"+result.id()+".txt")).startsWith("0 0.45 0.4 0.5 0.2");
+    }
     @Test void poseStageKeepsRootAndRequiresFreshRegionBeforeDefects() throws Exception {
         Asset source=images.upload(png(),"SOURCE",DATE);
         String id=((Map<?,?>)batches.draft(new Draft("POSE","TEST",List.of(source.id()),DATE,
@@ -261,7 +370,7 @@ class WorkflowTest {
             assertThat(p.baseDate()).isIn("2024-02-28","2024-02-29","2024-03-01");
             assertThat(p.randomization()).isEqualTo(sampling);
             assertThat(task.inputId()).isEqualTo(input.id());
-            assertThat(p.defect().positions()).hasSizeBetween(p.defect().type().equals("multi_break")?2:1,4);
+            assertThat(p.defect().positions()).hasSizeBetween(1,4);
             assertThat(p.defect().positions()).doesNotContain(5,8); // Separators are never treated as digit defects.
             assertThat(task.prompt()).contains("完整日期："+p.baseDate(),"旧日期完整替换");
             assertThat(p.defect().severity()).isNotEqualTo("随机");

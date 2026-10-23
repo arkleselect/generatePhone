@@ -30,7 +30,7 @@ public class DatasetPlans {
             for(String date:dates) for(Defect defect:d.defects()) {
                 require(defect!=null && Prompts.TYPES.contains(defect.type()),"缺陷类型无效");
                 List<List<Integer>> combinations=Prompts.POSITION_TYPES.contains(defect.type())
-                    ? positions(date,d.coverage().positions(),"multi_break".equals(defect.type())?2:1) : List.of(List.of());
+                    ? positions(date,d.coverage().positions(),1) : List.of(List.of());
                 for(List<Integer> positions:combinations) for(int n=0;n<d.count();n++) {
                     Defect value=samples.defect(defect,date,d.randomization());
                     append(result,new Sample(date,null,new Defect(value.type(),positions,value.severity(),value.part(),value.direction(),value.object(),value.description())));

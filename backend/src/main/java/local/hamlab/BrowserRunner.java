@@ -43,10 +43,11 @@ public class BrowserRunner {
             builder.environment().put("HAMLAB_API_URL",apiUrl);
             builder.environment().put("BROWSER_STATE_DIR",state.toString());
             builder.environment().put("CONTROL_TOKEN",token);
+            builder.environment().put("HAMLAB_OWNER_PID",Long.toString(ProcessHandle.current().pid()));
             builder.redirectErrorStream(true).redirectOutput(ProcessBuilder.Redirect.appendTo(state.resolve("worker.log").toFile()));
             process=builder.start();
             for(int i=0;i<100;i++) {
-                if(!process.isAlive()) throw new IllegalArgumentException("执行器启动失败，请检查浏览器安装和 data/browser/worker.log");
+                if(!process.isAlive()) throw new IllegalArgumentException("执行器启动失败，请检查 8091 端口和 data/browser/worker.log");
                 try { request("status","GET"); break; } catch(Exception ignored) { Thread.sleep(100); }
             }
         }

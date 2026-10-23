@@ -1,0 +1,946 @@
+{
+  "phase1_256_test": {
+    "count": 8,
+    "AUROC": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "F1": 1.0,
+    "false_positive_rate": 0.0,
+    "false_negative_rate": 0.0,
+    "confusion_matrix": [
+      [
+        4,
+        0
+      ],
+      [
+        0,
+        4
+      ]
+    ],
+    "mean_ms": 22.10105212725466,
+    "P50_ms": 21.9570415065391,
+    "P95_ms": 23.277826753474073,
+    "threshold": 14.442174911499023,
+    "device": "cpu",
+    "input_size": 256,
+    "tile_size": 0,
+    "synthetic_only": true,
+    "conclusion": "Small-sample pipeline verification only; no real-production or pixel-level accuracy conclusion",
+    "dataset_validation": {
+      "count": 30,
+      "splits": {
+        "train/good": 12,
+        "val/good": 4,
+        "test/good": 4,
+        "val/bad": 6,
+        "test/bad": 4
+      },
+      "types": {
+        "good": 20,
+        "scratch": 4,
+        "crack": 3,
+        "stain": 3
+      },
+      "cross_split_near_duplicates": [
+        [
+          "good_0004",
+          "good_0016"
+        ]
+      ],
+      "near_duplicate_note": "32x32 grayscale mean absolute difference < 2; manual review required, not proof of duplication"
+    },
+    "by_defect": {
+      "crack": {
+        "count": 5,
+        "AUROC": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "F1": 1.0,
+        "false_positive_rate": 0.0,
+        "false_negative_rate": 0.0,
+        "confusion_matrix": [
+          [
+            4,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ],
+        "mean_ms": 22.245166602078825,
+        "P50_ms": 21.88179100630805,
+        "P95_ms": 23.38475800352171
+      },
+      "scratch": {
+        "count": 6,
+        "AUROC": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "F1": 1.0,
+        "false_positive_rate": 0.0,
+        "false_negative_rate": 0.0,
+        "confusion_matrix": [
+          [
+            4,
+            0
+          ],
+          [
+            0,
+            2
+          ]
+        ],
+        "mean_ms": 22.149055667493183,
+        "P50_ms": 22.045063000405207,
+        "P95_ms": 23.34911425350583
+      },
+      "stain": {
+        "count": 5,
+        "AUROC": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "F1": 1.0,
+        "false_positive_rate": 0.0,
+        "false_negative_rate": 0.0,
+        "confusion_matrix": [
+          [
+            4,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ],
+        "mean_ms": 22.275266802171245,
+        "P50_ms": 22.03229200677015,
+        "P95_ms": 23.38475800352171
+      }
+    },
+    "by_generation_batch": {
+      "phase1_edit": {
+        "count": 4,
+        "AUROC": null,
+        "precision": 1.0,
+        "recall": 1.0,
+        "F1": 1.0,
+        "false_positive_rate": null,
+        "false_negative_rate": 0.0,
+        "confusion_matrix": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            4
+          ]
+        ],
+        "mean_ms": 21.866093753487803,
+        "P50_ms": 21.9570415065391,
+        "P95_ms": 22.40611520537641
+      },
+      "phase1_normal": {
+        "count": 4,
+        "AUROC": null,
+        "precision": 0.0,
+        "recall": 0.0,
+        "F1": 0.0,
+        "false_positive_rate": 0.0,
+        "false_negative_rate": null,
+        "confusion_matrix": [
+          [
+            4,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "mean_ms": 22.33601050102152,
+        "P50_ms": 22.216249999473803,
+        "P95_ms": 23.42040175353759
+      }
+    }
+  },
+  "phase1_512_test": {
+    "count": 8,
+    "AUROC": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "F1": 1.0,
+    "false_positive_rate": 0.0,
+    "false_negative_rate": 0.0,
+    "confusion_matrix": [
+      [
+        4,
+        0
+      ],
+      [
+        0,
+        4
+      ]
+    ],
+    "mean_ms": 76.63093237351859,
+    "P50_ms": 76.20781249715947,
+    "P95_ms": 78.81422895006835,
+    "threshold": 14.636468887329102,
+    "device": "cpu",
+    "input_size": 512,
+    "tile_size": 0,
+    "synthetic_only": true,
+    "conclusion": "Small-sample pipeline verification only; no real-production or pixel-level accuracy conclusion",
+    "dataset_validation": {
+      "count": 30,
+      "splits": {
+        "train/good": 12,
+        "val/good": 4,
+        "test/good": 4,
+        "val/bad": 6,
+        "test/bad": 4
+      },
+      "types": {
+        "good": 20,
+        "scratch": 4,
+        "crack": 3,
+        "stain": 3
+      },
+      "cross_split_near_duplicates": [
+        [
+          "good_0004",
+          "good_0016"
+        ]
+      ],
+      "near_duplicate_note": "32x32 grayscale mean absolute difference < 2; manual review required, not proof of duplication"
+    },
+    "by_defect": {
+      "crack": {
+        "count": 5,
+        "AUROC": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "F1": 1.0,
+        "false_positive_rate": 0.0,
+        "false_negative_rate": 0.0,
+        "confusion_matrix": [
+          [
+            4,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ],
+        "mean_ms": 76.71415839577094,
+        "P50_ms": 76.36045799881686,
+        "P95_ms": 78.27629999665078
+      },
+      "scratch": {
+        "count": 6,
+        "AUROC": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "F1": 1.0,
+        "false_positive_rate": 0.0,
+        "false_negative_rate": 0.0,
+        "confusion_matrix": [
+          [
+            4,
+            0
+          ],
+          [
+            0,
+            2
+          ]
+        ],
+        "mean_ms": 76.66089583168893,
+        "P50_ms": 76.20781249715947,
+        "P95_ms": 78.85093725053594
+      },
+      "stain": {
+        "count": 5,
+        "AUROC": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "F1": 1.0,
+        "false_positive_rate": 0.0,
+        "false_negative_rate": 0.0,
+        "confusion_matrix": [
+          [
+            4,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ],
+        "mean_ms": 76.49897519731894,
+        "P50_ms": 76.05516699550208,
+        "P95_ms": 78.13259159738664
+      }
+    },
+    "by_generation_batch": {
+      "phase1_edit": {
+        "count": 4,
+        "AUROC": null,
+        "precision": 1.0,
+        "recall": 1.0,
+        "F1": 1.0,
+        "false_positive_rate": null,
+        "false_negative_rate": 0.0,
+        "confusion_matrix": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            4
+          ]
+        ],
+        "mean_ms": 76.6389167511079,
+        "P50_ms": 76.54104199900758,
+        "P95_ms": 78.66315180071979
+      },
+      "phase1_normal": {
+        "count": 4,
+        "AUROC": null,
+        "precision": 0.0,
+        "recall": 0.0,
+        "F1": 0.0,
+        "false_positive_rate": 0.0,
+        "false_negative_rate": null,
+        "confusion_matrix": [
+          [
+            4,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "mean_ms": 76.62294799592928,
+        "P50_ms": 76.20781249715947,
+        "P95_ms": 78.24334994729725
+      }
+    }
+  },
+  "phase1_tiles512_test": {
+    "count": 8,
+    "AUROC": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "F1": 1.0,
+    "false_positive_rate": 0.0,
+    "false_negative_rate": 0.0,
+    "confusion_matrix": [
+      [
+        4,
+        0
+      ],
+      [
+        0,
+        4
+      ]
+    ],
+    "mean_ms": 713.8039477486018,
+    "P50_ms": 722.8683330031345,
+    "P95_ms": 797.5149271987902,
+    "threshold": 16.619768142700195,
+    "device": "cpu",
+    "input_size": 512,
+    "tile_size": 512,
+    "synthetic_only": true,
+    "conclusion": "Small-sample pipeline verification only; no real-production or pixel-level accuracy conclusion",
+    "dataset_validation": {
+      "count": 30,
+      "splits": {
+        "train/good": 12,
+        "val/good": 4,
+        "test/good": 4,
+        "val/bad": 6,
+        "test/bad": 4
+      },
+      "types": {
+        "good": 20,
+        "scratch": 4,
+        "crack": 3,
+        "stain": 3
+      },
+      "cross_split_near_duplicates": [
+        [
+          "good_0004",
+          "good_0016"
+        ]
+      ],
+      "near_duplicate_note": "32x32 grayscale mean absolute difference < 2; manual review required, not proof of duplication"
+    },
+    "by_defect": {
+      "crack": {
+        "count": 5,
+        "AUROC": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "F1": 1.0,
+        "false_positive_rate": 0.0,
+        "false_negative_rate": 0.0,
+        "confusion_matrix": [
+          [
+            4,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ],
+        "mean_ms": 720.9142748004524,
+        "P50_ms": 729.4753330061212,
+        "P95_ms": 780.0548252038425
+      },
+      "scratch": {
+        "count": 6,
+        "AUROC": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "F1": 1.0,
+        "false_positive_rate": 0.0,
+        "false_negative_rate": 0.0,
+        "confusion_matrix": [
+          [
+            4,
+            0
+          ],
+          [
+            0,
+            2
+          ]
+        ],
+        "mean_ms": 735.6497498331009,
+        "P50_ms": 729.5041454999591,
+        "P95_ms": 798.2579479976266
+      },
+      "stain": {
+        "count": 5,
+        "AUROC": 1.0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "F1": 1.0,
+        "false_positive_rate": 0.0,
+        "false_negative_rate": 0.0,
+        "confusion_matrix": [
+          [
+            4,
+            0
+          ],
+          [
+            0,
+            1
+          ]
+        ],
+        "mean_ms": 725.5743082001572,
+        "P50_ms": 729.4753330061212,
+        "P95_ms": 780.0548252038425
+      }
+    },
+    "by_generation_batch": {
+      "phase1_edit": {
+        "count": 4,
+        "AUROC": null,
+        "precision": 1.0,
+        "recall": 1.0,
+        "F1": 1.0,
+        "false_positive_rate": null,
+        "false_negative_rate": 0.0,
+        "confusion_matrix": [
+          [
+            0,
+            0
+          ],
+          [
+            0,
+            4
+          ]
+        ],
+        "mean_ms": 685.6191664955986,
+        "P50_ms": 652.8723539959174,
+        "P95_ms": 779.0856687446649
+      },
+      "phase1_normal": {
+        "count": 4,
+        "AUROC": null,
+        "precision": 0.0,
+        "recall": 0.0,
+        "F1": 0.0,
+        "false_positive_rate": 0.0,
+        "false_negative_rate": null,
+        "confusion_matrix": [
+          [
+            4,
+            0
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "mean_ms": 741.988729001605,
+        "P50_ms": 729.5041454999591,
+        "P95_ms": 783.2124419044703
+      }
+    }
+  },
+  "mvtec_tile_20normal_256_test": {
+    "count": 76,
+    "AUROC": 0.9499647639182522,
+    "precision": 0.9736842105263158,
+    "recall": 0.8604651162790697,
+    "F1": 0.9135802469135802,
+    "false_positive_rate": 0.030303030303030304,
+    "false_negative_rate": 0.13953488372093023,
+    "confusion_matrix": [
+      [
+        32,
+        1
+      ],
+      [
+        6,
+        37
+      ]
+    ],
+    "mean_ms": 19.950030802168552,
+    "P50_ms": 19.751416992221493,
+    "P95_ms": 20.35722925211303,
+    "threshold": 12.046640396118164,
+    "device": "cpu",
+    "input_size": 256,
+    "tile_size": 0,
+    "synthetic_only": false,
+    "conclusion": "Small-sample pipeline verification only; no real-production or pixel-level accuracy conclusion",
+    "dataset_validation": {
+      "count": 183,
+      "splits": {
+        "val/good": 46,
+        "train/good": 20,
+        "val/bad": 41,
+        "test/bad": 43,
+        "test/good": 33
+      },
+      "types": {
+        "good": 99,
+        "crack": 17,
+        "glue_strip": 18,
+        "gray_stroke": 16,
+        "oil": 18,
+        "rough": 15
+      },
+      "cross_split_near_duplicates": [],
+      "near_duplicate_note": "32x32 grayscale mean absolute difference < 2; manual review required, not proof of duplication"
+    },
+    "by_defect": {
+      "crack": {
+        "count": 42,
+        "AUROC": 1.0,
+        "precision": 0.9,
+        "recall": 1.0,
+        "F1": 0.9473684210526315,
+        "false_positive_rate": 0.030303030303030304,
+        "false_negative_rate": 0.0,
+        "confusion_matrix": [
+          [
+            32,
+            1
+          ],
+          [
+            0,
+            9
+          ]
+        ],
+        "mean_ms": 19.77533645133787,
+        "P50_ms": 19.751416992221493,
+        "P95_ms": 20.074687491432996
+      },
+      "glue_strip": {
+        "count": 42,
+        "AUROC": 1.0,
+        "precision": 0.9,
+        "recall": 1.0,
+        "F1": 0.9473684210526315,
+        "false_positive_rate": 0.030303030303030304,
+        "false_negative_rate": 0.0,
+        "confusion_matrix": [
+          [
+            32,
+            1
+          ],
+          [
+            0,
+            9
+          ]
+        ],
+        "mean_ms": 19.76203880899231,
+        "P50_ms": 19.715250506123994,
+        "P95_ms": 20.074687491432996
+      },
+      "gray_stroke": {
+        "count": 41,
+        "AUROC": 0.8143939393939394,
+        "precision": 0.8333333333333334,
+        "recall": 0.625,
+        "F1": 0.7142857142857143,
+        "false_positive_rate": 0.030303030303030304,
+        "false_negative_rate": 0.375,
+        "confusion_matrix": [
+          [
+            32,
+            1
+          ],
+          [
+            3,
+            5
+          ]
+        ],
+        "mean_ms": 19.757253170033305,
+        "P50_ms": 19.724790996406227,
+        "P95_ms": 20.076624990906566
+      },
+      "oil": {
+        "count": 42,
+        "AUROC": 1.0,
+        "precision": 0.9,
+        "recall": 1.0,
+        "F1": 0.9473684210526315,
+        "false_positive_rate": 0.030303030303030304,
+        "false_negative_rate": 0.0,
+        "confusion_matrix": [
+          [
+            32,
+            1
+          ],
+          [
+            0,
+            9
+          ]
+        ],
+        "mean_ms": 19.851128142146905,
+        "P50_ms": 19.81912499468308,
+        "P95_ms": 20.356002050539246
+      },
+      "rough": {
+        "count": 41,
+        "AUROC": 0.9166666666666666,
+        "precision": 0.8333333333333334,
+        "recall": 0.625,
+        "F1": 0.7142857142857143,
+        "false_positive_rate": 0.030303030303030304,
+        "false_negative_rate": 0.375,
+        "confusion_matrix": [
+          [
+            32,
+            1
+          ],
+          [
+            3,
+            5
+          ]
+        ],
+        "mean_ms": 20.06614239028905,
+        "P50_ms": 19.80604098935146,
+        "P95_ms": 20.357917004730552
+      }
+    },
+    "by_generation_batch": {
+      "MVTecAD_original": {
+        "count": 76,
+        "AUROC": 0.9499647639182522,
+        "precision": 0.9736842105263158,
+        "recall": 0.8604651162790697,
+        "F1": 0.9135802469135802,
+        "false_positive_rate": 0.030303030303030304,
+        "false_negative_rate": 0.13953488372093023,
+        "confusion_matrix": [
+          [
+            32,
+            1
+          ],
+          [
+            6,
+            37
+          ]
+        ],
+        "mean_ms": 19.950030802168552,
+        "P50_ms": 19.751416992221493,
+        "P95_ms": 20.35722925211303
+      }
+    }
+  },
+  "phase2_256": {
+    "count": 50,
+    "AUROC": 0.9833333333333334,
+    "precision": 0.9655172413793104,
+    "recall": 0.9333333333333333,
+    "F1": 0.9491525423728814,
+    "false_positive_rate": 0.05,
+    "false_negative_rate": 0.06666666666666667,
+    "confusion_matrix": [
+      [
+        19,
+        1
+      ],
+      [
+        2,
+        28
+      ]
+    ],
+    "mean_ms": 25.10207418119535,
+    "P50_ms": 25.054771496797912,
+    "P95_ms": 26.31528126075864,
+    "threshold": 6.8304338455200195,
+    "device": "cpu",
+    "input_size": 256,
+    "tile_size": 0,
+    "synthetic_only": true,
+    "conclusion": "Small-sample pipeline verification only; no real-production or pixel-level accuracy conclusion",
+    "dataset_validation": {
+      "count": 260,
+      "splits": {
+        "train/good": 160,
+        "val/good": 20,
+        "test/good": 20,
+        "val/bad": 30,
+        "test/bad": 30
+      },
+      "types": {
+        "good": 200,
+        "scratch": 20,
+        "crack": 20,
+        "stain": 20
+      },
+      "cross_split_near_duplicates": [
+        [
+          "good_0003",
+          "good_0165"
+        ],
+        [
+          "good_0006",
+          "good_0164"
+        ],
+        [
+          "good_0006",
+          "scratch_0004"
+        ],
+        [
+          "good_0021",
+          "stain_0013"
+        ],
+        [
+          "good_0030",
+          "good_0191"
+        ],
+        [
+          "good_0038",
+          "good_0190"
+        ],
+        [
+          "good_0051",
+          "good_0187"
+        ],
+        [
+          "good_0051",
+          "scratch_0017"
+        ],
+        [
+          "good_0051",
+          "stain_0017"
+        ],
+        [
+          "good_0062",
+          "crack_0005"
+        ],
+        [
+          "good_0067",
+          "stain_0004"
+        ],
+        [
+          "good_0081",
+          "stain_0010"
+        ],
+        [
+          "good_0083",
+          "scratch_0009"
+        ],
+        [
+          "good_0083",
+          "stain_0009"
+        ],
+        [
+          "good_0091",
+          "good_0175"
+        ],
+        [
+          "good_0103",
+          "good_0163"
+        ],
+        [
+          "good_0103",
+          "scratch_0003"
+        ],
+        [
+          "good_0104",
+          "crack_0005"
+        ],
+        [
+          "good_0109",
+          "scratch_0008"
+        ],
+        [
+          "good_0109",
+          "stain_0008"
+        ],
+        [
+          "good_0136",
+          "good_0200"
+        ],
+        [
+          "good_0136",
+          "crack_0020"
+        ],
+        [
+          "good_0151",
+          "good_0176"
+        ],
+        [
+          "good_0151",
+          "crack_0006"
+        ],
+        [
+          "good_0164",
+          "good_0189"
+        ],
+        [
+          "good_0189",
+          "scratch_0004"
+        ]
+      ],
+      "near_duplicate_note": "32x32 grayscale mean absolute difference < 2; manual review required, not proof of duplication"
+    },
+    "by_defect": {
+      "crack": {
+        "count": 30,
+        "AUROC": 1.0,
+        "precision": 0.9090909090909091,
+        "recall": 1.0,
+        "F1": 0.9523809523809523,
+        "false_positive_rate": 0.05,
+        "false_negative_rate": 0.0,
+        "confusion_matrix": [
+          [
+            19,
+            1
+          ],
+          [
+            0,
+            10
+          ]
+        ],
+        "mean_ms": 24.754443069105037,
+        "P50_ms": 24.74506250291597,
+        "P95_ms": 25.849576755717862
+      },
+      "scratch": {
+        "count": 30,
+        "AUROC": 0.95,
+        "precision": 0.8888888888888888,
+        "recall": 0.8,
+        "F1": 0.8421052631578947,
+        "false_positive_rate": 0.05,
+        "false_negative_rate": 0.2,
+        "confusion_matrix": [
+          [
+            19,
+            1
+          ],
+          [
+            2,
+            8
+          ]
+        ],
+        "mean_ms": 24.924568069400266,
+        "P50_ms": 24.430229503195733,
+        "P95_ms": 26.31528126075864
+      },
+      "stain": {
+        "count": 30,
+        "AUROC": 1.0,
+        "precision": 0.9090909090909091,
+        "recall": 1.0,
+        "F1": 0.9523809523809523,
+        "false_positive_rate": 0.05,
+        "false_negative_rate": 0.0,
+        "confusion_matrix": [
+          [
+            19,
+            1
+          ],
+          [
+            0,
+            10
+          ]
+        ],
+        "mean_ms": 24.723890300568502,
+        "P50_ms": 24.688749996130355,
+        "P95_ms": 25.822031118150335
+      }
+    },
+    "by_generation_batch": {
+      "phase2_edit": {
+        "count": 30,
+        "AUROC": null,
+        "precision": 1.0,
+        "recall": 0.9333333333333333,
+        "F1": 0.9655172413793104,
+        "false_positive_rate": null,
+        "false_negative_rate": 0.06666666666666667,
+        "confusion_matrix": [
+          [
+            0,
+            0
+          ],
+          [
+            2,
+            28
+          ]
+        ],
+        "mean_ms": 25.553734733451467,
+        "P50_ms": 25.438479497097433,
+        "P95_ms": 26.662770652910694
+      },
+      "phase2_normal": {
+        "count": 20,
+        "AUROC": null,
+        "precision": 0.0,
+        "recall": 0.0,
+        "F1": 0.0,
+        "false_positive_rate": 0.05,
+        "false_negative_rate": null,
+        "confusion_matrix": [
+          [
+            19,
+            1
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "mean_ms": 24.42458335281117,
+        "P50_ms": 24.203999986639246,
+        "P95_ms": 25.754583945672493
+      }
+    }
+  }
+}

@@ -10,6 +10,11 @@ import static local.hamlab.Models.*;
 /** Validates business parameters once and expands maintainable stage-specific templates. */
 @Service
 public class Prompts {
+    private static final List<String> INK_LOCATIONS = List.of(
+        "日期左侧、靠近左端的红色肠衣空白处，与日期完全分离",
+        "产品中段的红色肠衣表面、日期正上方，与字符留出空隙",
+        "日期右侧的红色肠衣空白处，与日期完全分离",
+        "产品中段的红色肠衣表面、日期正下方，与字符留出空隙");
     public static final Set<String> TYPES = DefectCatalog.ALL.keySet();
     public static final Set<String> POSITION_TYPES = DefectCatalog.positionTypes();
     public static final Set<String> SEVERITY_TYPES = DefectCatalog.severityTypes();
@@ -44,21 +49,41 @@ public class Prompts {
         require(d.positions() != null && d.positions().stream().allMatch(i -> i != null && i >= 1 && i <= date.length()), "字符位置超出日期长度");
         require(d.positions().size() == new HashSet<>(d.positions()).size(), "字符位置不能重复");
         require(!POSITION_TYPES.contains(d.type()) || !d.positions().isEmpty(), "请选择受影响字符");
-        require(!"multi_break".equals(d.type()) || d.positions().size() >= 2, "多字符掉点至少选择两个字符");
         require(!SEVERITY_TYPES.contains(d.type()) || Set.of("轻度","中度","重度").contains(Objects.toString(d.severity(),"")), "请选择有效缺陷程度");
         require(d.description() != null && d.description().length() <= 1000 && d.object() != null && d.object().length() <= 200, "说明过长或缺失");
         require(!"custom".equals(d.type()) || !d.description().isBlank(), "请填写自定义缺陷名称和说明");
         require(!"occlusion".equals(d.type()) || !d.object().isBlank(), "请填写遮挡物");
         require(!"partial_break".equals(d.type()) || Set.of("上部","下部","左侧","右侧","局部笔画").contains(Objects.toString(d.part(),"")), "请选择断码部位");
-        require(!Set.of("smear","double_print").contains(d.type()) || Set.of("左","右","上","下").contains(Objects.toString(d.direction(),"")), "请选择方向");
+        require(!Set.of("smear","double_print","ink_transfer").contains(d.type()) || Set.of("左","右","上","下").contains(Objects.toString(d.direction(),"")), "请选择方向");
     }
     public String build(String stage, Params p) {
+        return build(stage,p,false);
+    }
+    public String build(String stage, Params p, boolean defectReference) {
+        return build(stage,p,defectReference,0);
+    }
+    public String build(String stage, Params p, boolean defectReference, int inkLocationIndex) {
         date(p.baseDate()); pose(p.pose());
         String map = IntStream.range(0,p.baseDate().length()).mapToObj(i -> "第"+(i+1)+"位："+p.baseDate().charAt(i)).reduce((a,b)->a+"；"+b).orElse("");
         String body;
         if ("POSE".equals(stage)) body = pose.replace("{{effect}}", poseEffect(p.pose()));
-        else { defect(p.defect(), p.baseDate()); roi(p.roi()); body = defect.replace("{{effect}}", defectEffect(p.defect(),p.baseDate())).replace("{{roi}}",p.roi().toString()); }
-        return common.replace("{{date}}",p.baseDate()).replace("{{mapping}}",map) + body;
+        else {
+            defect(p.defect(), p.baseDate()); roi(p.roi());
+            boolean inkTransfer="ink_transfer".equals(p.defect().type());
+            body = defect.replace("{{effect}}", defectEffect(p.defect(),p.baseDate(),inkLocationIndex))
+                .replace("{{roi}}",p.roi().toString())
+                .replace("{{edit_scope}}",inkTransfer
+                    ? "只编辑日期和本张指定位置的一小处红色肠衣表面；印染位置可以在日期编辑区域之外。"
+                    : "只编辑日期及实现本次缺陷所必需的紧邻区域。");
+        }
+        if(defectReference) require("DEFECT".equals(stage),"缺陷参考图只用于阶段B");
+        String referenceInstruction = defectReference
+            ? "参考图已有人为确认的同类缺陷：保留其真实的墨迹质感与局部形态作为参考，但改变缺陷的具体位置、长度、深浅和细节；本次以任务参数为准，不直接复制整张图。"
+            : "不要照搬参考图已有的缺失位置、断码形状、浅淡分布或遮挡方式。本次以任务参数为准。";
+        return common.replace("{{reference_instruction}}",referenceInstruction).replace("{{date}}",p.baseDate()).replace("{{mapping}}",map)
+            + body.replace("{{defect_reference_instruction}}",defectReference
+                ? "参考原有同类缺陷的形态，重新生成一处主要缺陷，不叠加原有痕迹"
+                : "不要继承参考图的旧缺陷，只实现一种主要效果");
     }
     private String poseEffect(Pose p) {
         String effect = switch (p.kind()) {
@@ -70,11 +95,12 @@ public class Prompts {
         };
         return effect + "。补充：" + p.description();
     }
-    private String defectEffect(Defect d, String date) {
+    private String defectEffect(Defect d, String date, int inkLocationIndex) {
         String positions = d.positions().stream().sorted().map(i -> "第"+i+"位「"+date.charAt(i-1)+"」").reduce((a,b)->a+"、"+b).orElse("全部字符");
         String effect = DefectCatalog.ALL.get(d.type()).effect()
             .replace("{positions}",positions).replace("{part}",Objects.toString(d.part(),""))
             .replace("{direction}",Objects.toString(d.direction(),""))
+            .replace("{location}",INK_LOCATIONS.get(Math.floorMod(inkLocationIndex,INK_LOCATIONS.size())))
             .replace("{object}",Objects.toString(d.object(),""))
             .replace("{description}",Objects.toString(d.description(),""));
         return effect + (SEVERITY_TYPES.contains(d.type()) ? "。程度："+d.severity() : "") + "。补充："+d.description();

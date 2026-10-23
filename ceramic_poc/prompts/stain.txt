@@ -1,0 +1,7 @@
+Using the provided clean ceramic tile image as the exact base image, introduce one small realistic surface stain.
+
+The stain should have irregular boundaries, subtle color variation, and realistic contact with the ceramic material.
+
+Modify only the stain region. Preserve the original image outside the defect region.
+
+Do not add additional objects or defects.

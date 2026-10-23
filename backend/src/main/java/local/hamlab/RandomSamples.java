@@ -52,9 +52,8 @@ public class RandomSamples {
         if(Prompts.POSITION_TYPES.contains(d.type())) {
             List<Integer> digits=new ArrayList<>();
             for(int i=0;i<date.length();i++) if(Character.isDigit(date.charAt(i))) digits.add(i+1);
-            int min=d.type().equals("multi_break")?2:1;
-            require(digits.size()>=min,"当前日期中没有足够的数字供缺陷采样");
-            int count=ThreadLocalRandom.current().nextInt(min,Math.min(r.maxAffected(),digits.size())+1);
+            require(!digits.isEmpty(),"当前日期中没有足够的数字供缺陷采样");
+            int count=ThreadLocalRandom.current().nextInt(1,Math.min(r.maxAffected(),digits.size())+1);
             if(ThreadLocalRandom.current().nextBoolean()) Collections.shuffle(digits);
             else { int start=ThreadLocalRandom.current().nextInt(digits.size()-count+1);digits=new ArrayList<>(digits.subList(start,start+count)); }
             positions=digits.subList(0,count).stream().sorted().toList();

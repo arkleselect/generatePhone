@@ -30,7 +30,7 @@ public class Images {
         return root.resolve(thumbnail ? "thumbs" : "images").resolve(thumbnail ? asset.id()+".jpg" : asset.filename());
     }
     public Asset upload(byte[] bytes, String role, String date) throws IOException {
-        require(role.equals("SOURCE") || role.equals("POSE"), "上传只能为原始图或真实底图"); Prompts.date(date);
+        require(java.util.Set.of("SOURCE","POSE","DEFECT_REF").contains(role), "上传用途无效"); Prompts.date(date);
         String id = UUID.randomUUID().toString();
         return save(id, bytes, id, null, role, "REAL", date, new Pose("original",0,0,"真实上传"), null);
     }
@@ -44,17 +44,40 @@ public class Images {
         require(ids.stream().allMatch(java.util.Objects::nonNull) && new java.util.HashSet<>(ids).size()==ids.size(),"图片编号无效或重复");
         for(String id:ids.stream().sorted().toList()) deleteUnreferenced(id, true);
     }
+    /** Remove reviewed generation outputs while keeping the task and its input provenance. */
+    @Transactional
+    public void deleteOutputs(String batchId, java.util.List<String> ids) {
+        require(ids!=null && !ids.isEmpty() && ids.size()<=200,"请选择1至200张生成图片");
+        require(ids.stream().allMatch(java.util.Objects::nonNull) && new java.util.HashSet<>(ids).size()==ids.size(),"图片编号无效或重复");
+        for(String id:ids.stream().sorted().toList()) {
+            var rows=store.jdbc().queryForList("SELECT id,task_id FROM asset WHERE id=? FOR UPDATE",id);
+            require(!rows.isEmpty(),"图片不存在或已删除");
+            Asset asset=store.asset(id);
+            require(asset.taskId()!=null,"只能删除批次生成图片");
+            var task=store.task(asset.taskId());
+            require(task.batchId().equals(batchId) && id.equals(task.outputId()) && task.status().equals("SUCCEEDED"),"图片不属于该批次的已完成任务");
+            Integer uses=store.jdbc().queryForObject("SELECT COUNT(*) FROM image_task WHERE input_id=? OR root_source_id=?",Integer.class,id,id);
+            Integer children=store.jdbc().queryForObject("SELECT COUNT(*) FROM asset WHERE id<>? AND (root_source_id=? OR parent_pose_id=?)",Integer.class,id,id,id);
+            require(uses==0 && children==0,"图片已被后续任务引用，不能删除");
+            store.jdbc().update("UPDATE image_task SET status='DELETED',output_id=NULL,error='人工审核删除不合格图片' WHERE id=?",task.id());
+            store.jdbc().update("DELETE FROM asset WHERE id=?",id);
+            deleteFilesAfterCommit(asset);
+        }
+    }
     private void deleteUnreferenced(String id, boolean allowPose) {
         var locked = store.jdbc().queryForList("SELECT id FROM asset WHERE id=? FOR UPDATE", String.class, id);
         require(!locked.isEmpty(), "图片不存在或已删除");
         Asset asset = store.asset(id);
-        require(asset.role().equals("SOURCE") || (allowPose && asset.role().equals("POSE")), "仅支持删除原始参考图或未使用底图");
+        require(java.util.Set.of("SOURCE","DEFECT_REF").contains(asset.role()) || (allowPose && asset.role().equals("POSE")), "仅支持删除未使用的参考图或底图");
         Integer tasks = store.jdbc().queryForObject(
             "SELECT COUNT(*) FROM image_task WHERE input_id=? OR root_source_id=? OR output_id=?", Integer.class, id, id, id);
         Integer children = store.jdbc().queryForObject(
             "SELECT COUNT(*) FROM asset WHERE id<>? AND (root_source_id=? OR parent_pose_id=?)", Integer.class, id, id, id);
         require(tasks == 0 && children == 0, "图片 "+id.substring(0,8)+" 已被任务或生成图片引用，不能删除；需保留原图用于追溯");
         store.jdbc().update("DELETE FROM asset WHERE id=?", id);
+        deleteFilesAfterCommit(asset);
+    }
+    void deleteFilesAfterCommit(Asset asset) {
         // Never remove bytes before commit: rollback must leave the original usable.
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override public void afterCommit() {
@@ -62,7 +85,7 @@ public class Images {
                     try { Files.deleteIfExists(path); }
                     catch (IOException error) {
                         // A cleanup failure leaves an inaccessible orphan, not a broken live asset.
-                        LoggerFactory.getLogger(Images.class).error("Deleted asset {}: file cleanup failed for {}", id, path, error);
+                        LoggerFactory.getLogger(Images.class).error("Deleted asset {}: file cleanup failed for {}", asset.id(), path, error);
                     }
                 }
             }
@@ -128,8 +151,21 @@ public class Images {
         ByteArrayOutputStream out = new ByteArrayOutputStream(); ImageIO.write(image,"png",out); return out.toByteArray();
     }
     public Asset region(String id, Roi roi) {
-        require(store.asset(id).role().equals("POSE"), "只有姿势底图可以框选日期区域"); Prompts.roi(roi);
+        require(java.util.Set.of("POSE","DEFECT_REF").contains(store.asset(id).role()), "只有底图或缺陷参考图可以框选日期区域"); Prompts.roi(roi);
         store.jdbc().update("UPDATE asset SET roi_json=? WHERE id=?",store.json().write(roi),id); return store.asset(id);
+    }
+    public Asset annotate(String id, java.util.List<Annotation> boxes) {
+        Asset asset=store.asset(id);
+        require(asset.role().equals("RESULT") && asset.review().equals("APPROVED") && "NG".equals(asset.quality()),"仅可标注已审核通过的缺陷结果图");
+        require(boxes!=null && boxes.size()<=20,"每张图片最多标注20个缺陷框");
+        for(Annotation annotation:boxes) {
+            require(annotation!=null && annotation.classId()!=null && DefectCatalog.ALL.containsKey(annotation.classId()) && !annotation.classId().equals("normal"),"缺陷类别无效");
+            require(annotation.box()!=null,"缺陷框不能为空");
+            Prompts.roi(annotation.box());
+            require(annotation.box().width()*asset.width()>=2 && annotation.box().height()*asset.height()>=2,"缺陷框太小");
+        }
+        store.jdbc().update("UPDATE asset SET annotations_json=? WHERE id=?",store.json().write(boxes),id);
+        return store.asset(id);
     }
     /** Passing review confirms the requested sample, while OK/NG is a separate quality judgment. */
     @Transactional
@@ -147,7 +183,11 @@ public class Images {
             review(id,new Review(request.status(),label,label.equals("normal") ? "OK" : "NG",request.reason()));
         }
     }
+    @Transactional
     public Asset review(String id, Review review) {
+        var state=store.jdbc().queryForList("SELECT review FROM asset WHERE id=? FOR UPDATE",String.class,id);
+        require(!state.isEmpty(),"图片不存在或已删除");
+        require(state.getFirst().equals("PENDING"),"图片已审核，不能重复审核");
         Asset asset = store.asset(id);
         require(!asset.role().equals("SOURCE"), "原始参考图无需审核");
         require(java.util.Set.of("PENDING","APPROVED","REJECTED").contains(review.status()), "审核状态无效");
@@ -156,6 +196,7 @@ public class Images {
             require(review.label() != null && !review.label().isBlank() && review.label().length() <= 100, "请填写人工确认标签");
             require(java.util.Set.of("OK","NG").contains(review.quality()), "请选择产品质量判定");
             require(!asset.role().equals("POSE") || (review.label().equals("normal") && review.quality().equals("OK")), "底图必须确认为 normal / OK");
+            require(!asset.role().equals("DEFECT_REF") || (DefectCatalog.ALL.containsKey(review.label()) && !review.label().equals("normal") && review.quality().equals("NG")), "缺陷参考图必须确认为已有缺陷类别 / NG");
         }
         if (review.status().equals("REJECTED")) require(!review.reason().isBlank(), "请填写不通过原因");
         store.jdbc().update("UPDATE asset SET review=?,label=?,quality=?,rejection_reason=? WHERE id=?",review.status(),

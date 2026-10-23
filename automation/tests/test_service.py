@@ -6,6 +6,7 @@ from PIL import Image
 from fastapi.testclient import TestClient
 from config import Settings
 from service import create_app
+from service import stop_when_owner_exits
 from browser import existing_chrome_endpoint
 
 
@@ -18,6 +19,19 @@ class IdleController:
         return
     def status(self):
         return {'phase': 'STOPPED', 'enabled': False}
+
+
+def test_worker_stops_after_backend_exits(monkeypatch):
+    import service
+    import signal
+    calls = []
+    async def no_wait(_seconds):
+        return
+    monkeypatch.setattr(service.asyncio, 'sleep', no_wait)
+    monkeypatch.setattr(service.os, 'getppid', lambda: 1)
+    monkeypatch.setattr(service.os, 'kill', lambda pid, sig: calls.append((pid, sig)))
+    asyncio.run(stop_when_owner_exits(12345))
+    assert calls == [(service.os.getpid(), signal.SIGTERM)]
 
 
 def test_login_errors_return_json(tmp_path, monkeypatch):

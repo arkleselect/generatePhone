@@ -23,7 +23,7 @@ export const imageUrl = (id: string, thumbnail = false) => `/api/assets/${encode
 export const shortId = (id: string) => id.slice(0, 8).toUpperCase()
 export const statusText: Record<string, string> = {
   AWAITING_IMAGE: '等待账号生图', PENDING: '待处理', APPROVED: '审核通过', REJECTED: '不通过', DRAFT: '待确认', ACTIVE: '执行中',
-  PAUSED: '已暂停', CANCELLED: '已取消', COMPLETED: '已结束', RUNNING: '生成中', SUCCEEDED: '成功', FAILED: '失败', UNKNOWN: '待确认受理状态',
+  PAUSED: '已暂停', CANCELLED: '已取消', COMPLETED: '已结束', RUNNING: '生成中', SUCCEEDED: '成功', FAILED: '失败', UNKNOWN: '待确认受理状态', DELETED: '审核删除',
 }
 // Definitions come from the shared catalog; historical task ids remain unchanged.
 export const defectNames: Record<string, string> = reactive({})

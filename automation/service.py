@@ -4,6 +4,7 @@ import hmac
 import logging
 import os
 import re
+import signal
 import sys
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
@@ -13,6 +14,15 @@ from fastapi.responses import JSONResponse
 from bridge import Controller
 from config import Settings
 from dataset import GenerateRequest, Journal, validate_source
+
+
+async def stop_when_owner_exits(owner_pid):
+    while True:
+        await asyncio.sleep(1)
+        if os.getppid() != owner_pid:
+            logging.getLogger(__name__).warning('Backend exited; stopping orphan worker')
+            os.kill(os.getpid(), signal.SIGTERM)
+            return
 
 
 def create_app(settings=None, controller_factory=None):
@@ -31,10 +41,16 @@ def create_app(settings=None, controller_factory=None):
     async def lifespan(app):
         controller = controller_factory(settings); app.state.controller = controller
         task = asyncio.create_task(controller.loop())
+        owner_pid = os.getenv('HAMLAB_OWNER_PID')
+        owner_task = asyncio.create_task(stop_when_owner_exits(int(owner_pid))) if owner_pid else None
         try:
             yield
         finally:
             task.cancel()
+            if owner_task:
+                owner_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await owner_task
             with suppress(asyncio.CancelledError):
                 await task
             await controller.close()

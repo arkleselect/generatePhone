@@ -1,0 +1,4 @@
+Using the provided clean ceramic tile image as the exact base image, edit exactly one micro-defect on the ceramic surface.
+Introduce a very faint, short surface scratch, only 1-3% of tile width in length, approximately 0.5-1.0 pixels wide at 1024 resolution. Slightly lighter or darker than surrounding ceramic, low contrast. No deep gouge, broad scrape, exposed dark substrate or large gray streak.
+Defect center approximately ({{location}}) in normalized image coordinates. Keep it on the tile and vary its natural irregular shape and orientation. The defect should be easy to overlook when viewing the whole image, but genuinely present and identifiable at 100-200% zoom; do not make it completely invisible.
+Preserve the ceramic tile, background, camera angle, illumination, texture and all pixels outside the tiny defect region as closely as possible. No extra defects or artifacts, no text, watermark, graphic arrows or highlighted region. Return one 1024x1024 image.

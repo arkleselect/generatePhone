@@ -34,11 +34,30 @@ public class Exports {
                 m.put("generation_parameters",Map.of("image_id",task.inputId(),"edit_roi",task.params().roi(),"task_id",task.id(),"parameters_are_prompt_preferences",true));
                 m.put("actual_model",task.actualModel());m.put("execution_channel",task.executionChannel());
                 m.put("provider_request_id",task.providerRequestId());m.put("filename",name);m.put("width",a.width());m.put("height",a.height());
-                m.put("created_at",a.createdAt());m.put("spatial_annotation",null);
+                m.put("created_at",a.createdAt());m.put("spatial_annotation",a.annotations().isEmpty()?null:a.annotations());
                 manifest.append(store.json().write(m)).append('\n'); configs.put(task.batchId(),store.tasks(task.batchId()));
             }
             entry(zip,"manifest.jsonl",manifest.toString()); entry(zip,"generation-config.json",store.json().write(configs));
             entry(zip,"README.txt","AI合成数据，不是真实产线测试照片。预期缺陷与人工标签独立。ROI仅为编辑区域，不是缺陷标注。请按root_source_id分组划分数据集。测试模式图片永不导出。\n");
+        }
+    }
+    public void detectionZip(OutputStream output,List<Asset> selected) throws IOException {
+        var classes=selected.stream().flatMap(a->a.annotations().stream()).map(Annotation::classId).distinct().sorted().toList();
+        try(ZipOutputStream zip=new ZipOutputStream(output,StandardCharsets.UTF_8)) {
+            for(Asset asset:selected) {
+                zip.putNextEntry(new ZipEntry("images/"+asset.filename()));
+                Files.copy(images.file(asset,false),zip);zip.closeEntry();
+                StringBuilder labels=new StringBuilder();
+                for(Annotation a:asset.annotations()) {
+                    Roi b=a.box();
+                    labels.append(classes.indexOf(a.classId())).append(' ')
+                        .append(b.x()+b.width()/2).append(' ').append(b.y()+b.height()/2).append(' ')
+                        .append(b.width()).append(' ').append(b.height()).append('\n');
+                }
+                entry(zip,"labels/"+asset.id()+".txt",labels.toString());
+            }
+            entry(zip,"classes.txt",String.join("\n",classes)+"\n");
+            entry(zip,"README.txt","YOLO检测框：class_id x_center y_center width height，坐标归一化。仅含已审核、人工框选的缺陷图。训练前请按原始图片来源划分train/val，并补充无缺陷图；此包没有独立验证集。\n");
         }
     }
     private void entry(ZipOutputStream zip,String name,String text) throws IOException {

@@ -20,6 +20,7 @@ public class Store {
             r.getString("role"), r.getString("source_type"), r.getString("filename"), r.getInt("width"), r.getInt("height"),
             r.getLong("file_size"), r.getString("base_date"), json.read(r.getString("pose_json"), Pose.class),
             r.getString("roi_json") == null ? null : json.read(r.getString("roi_json"), Roi.class),
+            r.getString("annotations_json") == null ? List.of() : List.of(json.read(r.getString("annotations_json"), Annotation[].class)),
             r.getString("review"), r.getString("label"), r.getString("quality"), r.getString("rejection_reason"),
             r.getString("task_id"), r.getTimestamp("created_at").toInstant());
         tasks = (r, n) -> new Task(r.getString("id"), r.getString("batch_id"), r.getString("input_id"),

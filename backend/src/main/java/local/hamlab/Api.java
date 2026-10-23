@@ -33,6 +33,7 @@ public class Api {
             .body(new FileSystemResource(images.file(a,thumbnail)));
     }
     @PutMapping("/assets/{id}/roi") public Asset roi(@PathVariable String id,@RequestBody Roi roi) { return images.region(id,roi); }
+    @PutMapping("/assets/{id}/annotations") public Asset annotations(@PathVariable String id,@RequestBody List<Annotation> boxes) { return images.annotate(id,boxes); }
     @PutMapping("/assets/{id}/review") public Asset review(@PathVariable String id,@RequestBody Review review) { return images.review(id,review); }
     @GetMapping("/date-positions") public List<Map<String,Object>> positions(@RequestParam String date) { return prompts.mapping(date); }
     @GetMapping("/browser/status") public Map<?,?> browserStatus() { return browser.status(); }
@@ -52,8 +53,10 @@ public class Api {
         return Map.of("total",total,"perInput",perInput,"limit",DatasetPlans.LIMIT);
     }
     @PostMapping("/assets/delete") public void deleteAssets(@RequestBody List<String> ids) { images.deleteAssets(ids); }
+    @PostMapping("/batches/{id}/outputs/delete") public void deleteOutputs(@PathVariable String id,@RequestBody List<String> ids) { images.deleteOutputs(id,ids); }
     @PostMapping("/batches") public Map<String,Object> draft(@RequestBody Draft draft) { return batches.draft(draft); }
     @DeleteMapping("/batches/{id}") public void deleteBatch(@PathVariable String id) { batches.delete(id); }
+    @DeleteMapping("/batches/{id}/purge") public void purgeBatch(@PathVariable String id) { batches.purge(id); }
     @PutMapping("/batches/{id}/review") public void reviewBatch(@PathVariable String id,@RequestBody BatchReview body) { images.reviewBatch(id,body); }
     @PostMapping("/batches/{id}/confirm") public void confirm(@PathVariable String id,@RequestBody Confirm confirm) { batches.confirm(id,confirm); }
     @PostMapping("/batches/{id}/{action}") public void action(@PathVariable String id,@PathVariable String action) { batches.action(id,action); }
@@ -79,5 +82,13 @@ public class Api {
         Prompts.require(!selected.isEmpty(),"没有符合筛选条件的真实生成结果；测试图片不导出");
         response.setContentType("application/zip");response.setHeader("Content-Disposition","attachment; filename=hamlab-dataset.zip");
         exports.zip(response.getOutputStream(),selected);
+    }
+    @GetMapping("/export/detection") public void detectionExport(@RequestParam(defaultValue="") String batch,HttpServletResponse response) throws IOException {
+        var selected=exports.select("","","APPROVED").stream()
+            .filter(a->"NG".equals(a.quality()) && !a.annotations().isEmpty())
+            .filter(a->batch.isBlank() || store.task(a.taskId()).batchId().equals(batch)).toList();
+        Prompts.require(!selected.isEmpty(),"没有已框选缺陷的审核通过图片");
+        response.setContentType("application/zip");response.setHeader("Content-Disposition","attachment; filename=hamlab-detection.zip");
+        exports.detectionZip(response.getOutputStream(),selected);
     }
 }

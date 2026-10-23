@@ -44,6 +44,9 @@ def test_required_catalog_and_prompts():
         prompt = build_defect_prompt(key, '2026.09.24', '轻微自然变化')
         assert '仅修改生产日期' in prompt and '2026.09.24' in prompt
         assert '不做海报风' in prompt and '轻微自然变化' in prompt
+    assert defect_key('印染') == 'ink_transfer'
+    assert '擦拖细纹' in build_defect_prompt('印染', '2026.09.24')
+    assert '印染可以位于日期之外' in build_defect_prompt('印染', '2026.09.24')
     with pytest.raises(ValueError):
         build_defect_prompt('blur', '2026.02.30')
 

@@ -22,3 +22,4 @@ dataset/
 
 automation/node_modules/
 output/deliverables/
+output/detection_tests/

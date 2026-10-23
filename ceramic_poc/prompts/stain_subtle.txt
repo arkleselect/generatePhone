@@ -1,0 +1,4 @@
+Using the provided clean ceramic tile image as the exact base image, edit exactly one micro-defect on the ceramic surface.
+Introduce a very small, extremely faint surface stain, only 0.5-1.5% of tile width in diameter. Pale gray or pale beige, only slightly different from white ceramic, soft irregular boundary. No dark brown patch, concentrated pigment, thick dirt, strong shadow or high contrast.
+Defect center approximately ({{location}}) in normalized image coordinates. Keep it on the tile and vary its natural irregular shape and orientation. The defect should be easy to overlook when viewing the whole image, but genuinely present and identifiable at 100-200% zoom; do not make it completely invisible.
+Preserve the ceramic tile, background, camera angle, illumination, texture and all pixels outside the tiny defect region as closely as possible. No extra defects or artifacts, no text, watermark, graphic arrows or highlighted region. Return one 1024x1024 image.

@@ -1,0 +1,7 @@
+Using the provided clean ceramic tile image as the exact base image, introduce one realistic thin surface scratch on the white ceramic tile.
+
+The scratch should be subtle but clearly visible, with irregular edges and realistic surface damage texture.
+
+Modify only the local scratch region. Preserve the original tile, background, lighting, perspective, camera position, and all unaffected pixels.
+
+Do not introduce any other defects, text, markings, or objects.

@@ -1,0 +1,7 @@
+Using the provided clean ceramic tile image as the exact base image, introduce one realistic irregular hairline crack on the ceramic surface.
+
+The crack should have natural branching or uneven geometry, with subtle dark lines and realistic ceramic fracture characteristics.
+
+Modify only the crack region. Preserve all other visual details of the original image.
+
+Do not add additional defects.

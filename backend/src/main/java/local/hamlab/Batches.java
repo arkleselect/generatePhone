@@ -10,11 +10,12 @@ import static local.hamlab.Prompts.require;
 @Service
 public class Batches {
     private final Store store;
+    private final Images images;
     private final Prompts prompts;
     private final ProviderConfig config;
     private final RandomSamples samples;
     private final DatasetPlans plans;
-    public Batches(Store store, Prompts prompts, ProviderConfig config,RandomSamples samples,DatasetPlans plans) { this.store=store; this.prompts=prompts; this.config=config; this.samples=samples; this.plans=plans; }
+    public Batches(Store store, Images images, Prompts prompts, ProviderConfig config,RandomSamples samples,DatasetPlans plans) { this.store=store; this.images=images; this.prompts=prompts; this.config=config; this.samples=samples; this.plans=plans; }
     @Transactional
     public Map<String,Object> draft(Draft d) {
         require(d != null && Set.of("POSE","DEFECT").contains(d.stage()), "阶段无效");
@@ -27,24 +28,27 @@ public class Batches {
         String batch=UUID.randomUUID().toString();
         store.jdbc().update("INSERT INTO batch(id,stage,status,mode) VALUES(?,?,'DRAFT',?)",batch,d.stage(),d.mode());
         int sequence=0;
+        int inkLocationIndex=0;
         // Date-major order ensures complete coverage before moving on to another date.
         for(var sample:planned) for(String id:d.inputIds()) {
-            Asset input=store.asset(id); validateInput(input,d.stage(),d.mode());
+            Asset input=store.asset(id); validateInput(input,d.stage(),d.mode(),sample.defect());
             if(d.stage().equals("DEFECT") && d.randomization()==null)
                 require(input.baseDate().equals(sample.date()),"底图日期与任务日期不一致，请使用新的日期采样配置");
             Params p=new Params(sample.date(),sample.pose()==null?input.pose():sample.pose(),sample.defect(),
                 d.stage().equals("DEFECT")?input.roi():null,d.randomization());
-            String prompt=prompts.build(d.stage(),p)+"\n画幅偏好："+config.settings().size()+"。实际输出尺寸以生成文件为准。";
+            String prompt=prompts.build(d.stage(),p,input.role().equals("DEFECT_REF"),inkLocationIndex)+"\n画幅偏好："+config.settings().size()+"。实际输出尺寸以生成文件为准。";
+            if(sample.defect()!=null && "ink_transfer".equals(sample.defect().type())) inkLocationIndex++;
             insert(batch,input,p,prompt,config.settings(),++sequence);
         }
         return detail(batch);
     }
-    /** A defect input can only be an approved pose: generated defects can never feed later defects. */
-    public void validateInput(Asset input,String stage,String mode) {
+    /** Only an approved matching reference may carry an existing defect into a new generation. */
+    public void validateInput(Asset input,String stage,String mode,Defect defect) {
         if(stage.equals("POSE")) require(input.role().equals("SOURCE"), "姿势生成只接受原始参考图");
         else {
-            require(input.role().equals("POSE") && input.review().equals("APPROVED"),"缺陷生成必须使用已审核通过的姿势底图");
+            require(java.util.Set.of("POSE","DEFECT_REF").contains(input.role()) && input.review().equals("APPROVED"),"缺陷生成必须使用已审核通过的底图或缺陷参考图");
             Prompts.roi(input.roi());
+            if(input.role().equals("DEFECT_REF")) require(defect!=null && defect.type().equals(input.label()),"缺陷参考图只能生成相同缺陷类别");
         }
         require(!mode.equals("ACCOUNT") || !input.sourceType().equals("TEST"),"测试图片不能用于账号生图");
     }
@@ -64,6 +68,29 @@ public class Batches {
         store.jdbc().update("DELETE FROM image_task WHERE batch_id=?",id);
         store.jdbc().update("DELETE FROM batch WHERE id=?",id);
     }
+    /** Delete this batch's results and records while preserving shared input images. */
+    @Transactional
+    public void purge(String id) {
+        var batch=lock(id);
+        require(!"ACTIVE".equals(batch.get("status")),"请先暂停或取消批次再删除");
+        require(store.jdbc().queryForObject("SELECT COUNT(*) FROM image_task WHERE batch_id=? AND status IN ('RUNNING','AWAITING_IMAGE','UNKNOWN')",Integer.class,id)==0,
+            "批次含执行中或结果待核实的任务，请先处理结果再删除");
+        List<String> ids=store.jdbc().queryForList("SELECT id FROM asset WHERE task_id IN (SELECT id FROM image_task WHERE batch_id=?) FOR UPDATE",String.class,id);
+        List<Asset> outputs=new ArrayList<>();
+        for(String outputId:ids) {
+            Asset output=store.asset(outputId);
+            Integer uses=store.jdbc().queryForObject("SELECT COUNT(*) FROM image_task WHERE batch_id<>? AND (input_id=? OR root_source_id=?)",Integer.class,id,outputId,outputId);
+            Integer children=store.jdbc().queryForObject("SELECT COUNT(*) FROM asset WHERE id<>? AND (root_source_id=? OR parent_pose_id=?)",Integer.class,outputId,outputId,outputId);
+            require(uses==0 && children==0,"批次图片 "+outputId.substring(0,8)+" 已被其他任务引用，不能删除");
+            outputs.add(output);
+        }
+        store.jdbc().update("DELETE FROM image_task WHERE batch_id=?",id);
+        for(Asset output:outputs) {
+            store.jdbc().update("DELETE FROM asset WHERE id=?",output.id());
+            images.deleteFilesAfterCommit(output);
+        }
+        store.jdbc().update("DELETE FROM batch WHERE id=?",id);
+    }
     private Map<String,Object> lock(String id) {
         return store.jdbc().queryForList("SELECT * FROM batch WHERE id=? FOR UPDATE",id).stream().findFirst().orElseThrow(()->new IllegalArgumentException("批次不存在"));
     }
@@ -80,7 +107,8 @@ public class Batches {
         }
         for(Task task:tasks) {
             require(edits.containsKey(task.id()),"任务编号不匹配");
-            validateInput(store.asset(task.inputId()),(String)batch.get("stage"),(String)batch.get("mode"));
+            Asset input=store.asset(task.inputId());
+            validateInput(input,(String)batch.get("stage"),(String)batch.get("mode"),task.params().defect());
             store.jdbc().update("UPDATE image_task SET prompt=?,status='PENDING' WHERE id=?",edits.get(task.id()),task.id());
         }
         store.jdbc().update("UPDATE batch SET status='ACTIVE' WHERE id=?",id);
@@ -114,7 +142,7 @@ public class Batches {
     public Map<String,Object> regenerate(String taskId) {
         Task task=store.task(taskId); var original=store.batch(task.batchId());
         String id=UUID.randomUUID().toString();
-        validateInput(store.asset(task.inputId()),(String)original.get("stage"),(String)original.get("mode"));
+        validateInput(store.asset(task.inputId()),(String)original.get("stage"),(String)original.get("mode"),task.params().defect());
         store.jdbc().update("INSERT INTO batch(id,stage,status,mode) VALUES(?,?,'DRAFT',?)",id,original.get("stage"),original.get("mode"));
         insert(id,store.asset(task.inputId()),task.params(),task.prompt(),task.settings(),1); return detail(id);
     }
